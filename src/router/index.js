@@ -1,7 +1,7 @@
+// index.js
 import { createRouter, createWebHistory } from 'vue-router';
 import HomeView from '../views/HomeView.vue';
-import Login from '../views/Login.vue';
-import Register from '../views/Register.vue';
+import Auth from '../views/Auth.vue'; // Новый общий компонент
 
 const routes = [
   {
@@ -15,14 +15,9 @@ const routes = [
     component: () => import('../views/AboutView.vue'),
   },
   {
-    path: '/login',
-    name: 'login',
-    component: Login,
-  },
-  {
-    path: '/register',
-    name: 'register',
-    component: Register,
+    path: '/auth', // Единый маршрут для авторизации и регистрации
+    name: 'auth',
+    component: Auth,
   },
 ];
 
