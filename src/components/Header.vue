@@ -1,9 +1,5 @@
 <template>
     <header class="header">
-      <div class="background-container">
-        <img src="@/assets/L_background.png" class="background-left" alt="Left Background" />
-        <img src="@/assets/R_background.png" class="background-right" alt="Right Background" />
-      </div>
       <div class="container">
         <div class="left">
             <div class="logo" @click="$router.push('/')" style="cursor: pointer;">
@@ -128,34 +124,8 @@ export default {
   z-index: 1000;
 }
 
-.background-container {
-  position: fixed;
-  top: 65px;
-  left: 0;
-  width: 100vw;
-  height: calc(100vh - 65px);
-  pointer-events: none;
-  z-index: 0; /* Фон теперь не уходит за -1 */
-}
 
 
-.background-left,
-.background-right {
-  position: absolute;
-  top: 0;
-  height: auto;
-  max-height: 1080px;
-  width: 100%;
-  max-width: 910px;
-}
-
-.background-left {
-  left: 0;
-}
-
-.background-right {
-  right: 0;
-}
 
 
 

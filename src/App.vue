@@ -2,62 +2,24 @@
 import { RouterLink, RouterView } from 'vue-router'
 import Header from '@/components/Header.vue'
 import SearchPanel from "@/components/SearchPanel.vue";
+import PlaceholderGrid from "@/components/PlaceholderGrid.vue";
+import BackgroundWithPlaceholders from "@/components/BackgroundWithPlaceholders.vue";
 </script>
 
 <template>
   <div id="app">
+    <Background />
     <Header />
-    <Footer />
-    <router-view />
+    <BackgroundWithPlaceholders />
+    <PlaceholderGrid />  
     <SearchPanel />
+    <router-view />
   </div>
-  
 </template>
 
-
-
 <style scoped>
-.home {
-  position: relative;
-  width: 100%;
-  height: 100vh;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 
 
-.background {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-image: url("@/assets/L_background.png"), url("@/assets/R_background.png");
-  background-position: left top, right top;
-  background-repeat: no-repeat, no-repeat;
-  background-size: contain, contain;
-  pointer-events: none;
-  z-index: -1;
-}
-
-.bg-left, .bg-right {
-  position: absolute;
-  width: auto;
-  height: 100%;
-  object-fit: contain;
-}
-
-.bg-left {
-  left: 0;
-  top: 0;
-}
-
-.bg-right {
-  right: 0;
-  top: 0;
-}
 
 @media (min-width: 1024px) {
   header {

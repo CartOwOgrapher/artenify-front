@@ -14,55 +14,25 @@
     </div>
   </template>
   
-  <script>
-  export default {
-    data() {
-      return {
-        searchQuery: "",
-        isHidden: false,
-        lastScrollY: 0,
-      };
-    },
-    methods: {
-      handleScroll() {
-        if (window.scrollY > this.lastScrollY) {
-          this.isHidden = true; // Скроллим вниз → панель скрывается
-        } else {
-          this.isHidden = false; // Скроллим вверх → панель появляется
-        }
-        this.lastScrollY = window.scrollY;
-      },
-    },
-    mounted() {
-      window.addEventListener("scroll", this.handleScroll);
-    },
-    beforeUnmount() {
-      window.removeEventListener("scroll", this.handleScroll);
-    },
-  };
-  </script>
   
   <style scoped>
+  /* Панель будет фиксированной ширины и с конкретными координатами */
   .search-panel {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
+    position: absolute;
+    width: 100%; /* Всю ширину окна */
+    height: 65px; /* Высота панели */
     background: white;
     display: flex;
     align-items: center;
     justify-content: space-around;
-    padding: 15px;
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    padding: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     transition: transform 0.3s ease-in-out;
-    z-index: 1100;
-  }
+    z-index: 1000;
   
-  /* Подгоняем панель под нижний край фонового изображения */
-  @media (min-height: 1080px) {
-    .search-panel {
-      bottom: calc((100vh - 1080px) / 2);
-    }
+    /* Точные координаты */
+    left: 0;
+    top: 912px; /* Измени это значение под нужное */
   }
   
   /* Скролл вниз — скрытие */
@@ -90,7 +60,6 @@
     border-radius: 25px;
     padding: 5px 10px;
     width: 60%;
-    max-width: 900px; /* Учитываем ширину фонового изображения */
   }
   
   .search-input input {
