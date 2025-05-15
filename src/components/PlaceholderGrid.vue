@@ -1,21 +1,13 @@
 <template>
-    <div class="grid-wrapper">
-      <div class="spacer"></div> <!-- Отступ сверху 919px -->
-      <div class="grid-container">
-        <div 
-          class="placeholder" 
-          v-for="(item, index) in items" 
-          :key="index"
-        >
-          <img 
-            src="@/assets/p_test.png" 
-            alt="Placeholder" 
-            class="placeholder-img"
-          />
-        </div>
+  <div class="grid-wrapper">
+    <div class="grid-container">
+      <div class="placeholder" v-for="(item, index) in items" :key="index">
+        <img src="@/assets/p_test.png" alt="Placeholder" class="placeholder-img" />
       </div>
     </div>
-  </template>
+  </div>
+</template>
+
   
   <script>
   import { ref, onMounted, onUnmounted } from "vue";
@@ -55,36 +47,26 @@
 
   
   /* Контейнер для всей сетки */
-  .grid-wrapper {
-    position: absolute;
-    top: 919px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 100%;
-    max-width: 1920px;
-    min-height: 100vh;
-    background: white; /* Белый фон */
-    z-index: 10; /* Поверх других слоёв */
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
+.grid-wrapper {
+  position: relative;
+  margin-top: px;
+  width: 100%;
+  background: white;
+  z-index: 12;
+  padding: 20px 0;
+}
+
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 55px 20px;
   
-  /* Отступ сверху */
-  .spacer {
-    height: 50px;
-    width: 100%;
-  }
-  
-  /* Сетка с плейсхолдерами */
-  .grid-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 55px 18px; /* Отступы: 50px вниз, 25px по бокам */
-    max-width: 1920px;
-    padding: 25px;
-    justify-content: center;
-  }
+  /* центрируем сам грид внутри wrapper */
+  max-width: 1920px;    /* или любая желаемая ширина */
+  margin: 0 auto;       /* именно авто-отступы по бокам */
+}
+
+
   
   /* Один плейсхолдер */
   .placeholder {
@@ -105,4 +87,3 @@
     object-fit: cover;
   }
   </style>
-  

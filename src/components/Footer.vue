@@ -1,9 +1,5 @@
 <template>
     <footer class="footer">
-      <div class="background-container">
-        <img src="@/assets/L_background.png" class="background-left" alt="Left Background" />
-        <img src="@/assets/R_background.png" class="background-right" alt="Right Background" />
-      </div>
       <div class="container">
         <p>&copy; 2025 Artenify. All rights reserved.</p>
       </div>

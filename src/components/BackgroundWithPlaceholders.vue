@@ -28,24 +28,23 @@
   <style scoped>
   /* Фоновые элементы */
   .background-container {
-    position: absolute;
-    top: 65px;
-    left: 0;
-    width: 100vw;
-    height: calc(100vh - 65px);
+    position: relative; /* Или static */
+    width: 100%;
+    height: auto;
     pointer-events: none;
-    z-index: 10;
+    z-index: 0; /* Ниже остальных */
   }
-  
+
   .background-left,
   .background-right {
     position: absolute;
     top: 0;
     height: auto;
-    max-height: 1080px;
-    width: 100%;
+    max-height: none;
+    width: auto;
     max-width: 910px;
   }
+
   
   .background-left {
     left: 0;
@@ -78,6 +77,7 @@
     height: 100%;
     z-index: 5;
   }
+
   
   /* Базовый стиль плейсхолдеров */
   .placeholder {
