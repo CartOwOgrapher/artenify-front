@@ -3,6 +3,7 @@ import HomeView from '@/views/HomeView.vue';
 import Login from '../views/Login.vue';
 import Register from '../views/Register.vue';
 import ProfileView from '../views/ProfileView.vue';
+import LeadersView from '../views/LeadersView.vue';
 
 const routes = [
   {
@@ -29,6 +30,11 @@ const routes = [
     path: '/profile', // ⬅️ Новый маршрут
     name: 'profile',
     component: ProfileView,
+  },
+  {
+    path: '/leaders',  // <-- новый путь
+    name: 'Leaders',
+    component: LeadersView
   },
 ];
 

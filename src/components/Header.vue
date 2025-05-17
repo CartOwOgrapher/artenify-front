@@ -1,73 +1,75 @@
 <template>
-    <header class="header">
-      <div class="container">
-        <div class="left">
-            <div class="logo" @click="$router.push('/')" style="cursor: pointer;">
+  <header class="header">
+    <div class="container">
+      <div class="left">
+        <div class="logo" style="cursor: pointer;">
+          <router-link to="/">
             <img src="@/assets/logo.png" alt="Логотип" />
+          </router-link>
+        </div>
+        <nav class="nav">
+          <router-link to="/" class="nav-link">Обзор</router-link>
+          <router-link to="/leaders" class="nav-link">Лидеры</router-link>
+          <a href="#">Ресурсы</a>
+          <a href="#">artenify+</a>
+        </nav>
+      </div>
+      <div class="auth-buttons">
+        <button class="login" @click="showLogin = true">Вход</button>
+        <button class="register" @click="showRegister = true">Регистрация</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Модальное окно логина -->
+  <transition name="modal-fade">
+    <div v-if="showLogin" class="modal-overlay" @click="closeModal">
+      <div class="modal-content" @click.stop>
+        <button class="close-btn" @click="closeModal">✖</button>
+        <h2>Welcome!</h2>
+        <h3>Sign in to Artenify</h3>
+        <form @submit.prevent="login">
+          <div class="form-group">
+            <label for="username">Login:</label>
+            <input type="text" id="username" v-model="username" required />
           </div>
-          <nav class="nav">
-            <a href="#">Обзор</a>
-            <a href="#">Лидеры</a>
-            <a href="#">Ресурсы</a>
-            <a href="#">artenify+</a>
-          </nav>
-        </div>
-        <div class="auth-buttons">
-          <button class="login" @click="showLogin = true">Вход</button>
-          <button class="register" @click="showRegister = true">Регистрация</button>
-        </div>
+          <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" id="password" v-model="password" required />
+          </div>
+          <button type="submit">Login</button>
+        </form>
       </div>
-    </header>
-  
-    <!-- Модальное окно логина -->
-    <transition name="modal-fade">
-      <div v-if="showLogin" class="modal-overlay" @click="closeModal">
-        <div class="modal-content" @click.stop>
-          <button class="close-btn" @click="closeModal">✖</button>
-          <h2>Welcome!</h2>
-          <h3>Sign in to Artenify</h3>
-          <form @submit.prevent="login">
-            <div class="form-group">
-              <label for="username">Login:</label>
-              <input type="text" id="username" v-model="username" required />
-            </div>
-            <div class="form-group">
-              <label for="password">Password:</label>
-              <input type="password" id="password" v-model="password" required />
-            </div>
-            <button type="submit">Login</button>
-          </form>
-        </div>
+    </div>
+  </transition>
+
+  <!-- Модальное окно регистрации -->
+  <transition name="modal-fade">
+    <div v-if="showRegister" class="modal-overlay" @click="closeModal">
+      <div class="modal-content" @click.stop>
+        <button class="close-btn" @click="closeModal">✖</button>
+        <h2>Join Artenify!</h2>
+        <h3>Create your account</h3>
+        <form @submit.prevent="register">
+          <div class="form-group">
+            <label for="new-username">Username:</label>
+            <input type="text" id="new-username" v-model="newUsername" required />
+          </div>
+          <div class="form-group">
+            <label for="new-email">Email:</label>
+            <input type="email" id="new-email" v-model="newEmail" required />
+          </div>
+          <div class="form-group">
+            <label for="new-password">Password:</label>
+            <input type="password" id="new-password" v-model="newPassword" required />
+          </div>
+          <button type="submit">Register</button>
+        </form>
       </div>
-    </transition>
-  
-    <!-- Модальное окно регистрации -->
-    <transition name="modal-fade">
-      <div v-if="showRegister" class="modal-overlay" @click="closeModal">
-        <div class="modal-content" @click.stop>
-          <button class="close-btn" @click="closeModal">✖</button>
-          <h2>Join Artenify!</h2>
-          <h3>Create your account</h3>
-          <form @submit.prevent="register">
-            <div class="form-group">
-              <label for="new-username">Username:</label>
-              <input type="text" id="new-username" v-model="newUsername" required />
-            </div>
-            <div class="form-group">
-              <label for="new-email">Email:</label>
-              <input type="email" id="new-email" v-model="newEmail" required />
-            </div>
-            <div class="form-group">
-              <label for="new-password">Password:</label>
-              <input type="password" id="new-password" v-model="newPassword" required />
-            </div>
-            <button type="submit">Register</button>
-          </form>
-        </div>
-      </div>
-    </transition>
+    </div>
+  </transition>
 </template>
-  
+
 <script>
 export default {
   data() {
@@ -123,12 +125,6 @@ export default {
   justify-content: center;
   z-index: 1000;
 }
-
-
-
-
-
-
 
 .container {
   width: 100%;
