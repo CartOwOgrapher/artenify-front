@@ -9,7 +9,7 @@ const routes = [
   {
     path: '/',
     name: 'home',
-    component: HomeView
+    component: HomeView,
   },
   {
     path: '/about',
@@ -20,6 +20,8 @@ const routes = [
     path: '/login',
     name: 'login',
     component: Login,
+    // ✅ Передаём параметр редиректа
+    props: route => ({ redirect: route.query.redirect }),
   },
   {
     path: '/register',
@@ -27,20 +29,37 @@ const routes = [
     component: Register,
   },
   {
-    path: '/profile', // ⬅️ Новый маршрут
+    path: '/profile',
     name: 'profile',
     component: ProfileView,
+    meta: { requiresAuth: true },
   },
   {
-    path: '/leaders',  // <-- новый путь
+    path: '/leaders',
     name: 'Leaders',
-    component: LeadersView
+    component: LeadersView,
+    meta: { requiresAuth: true },
   },
 ];
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
+});
+
+// ✅ Middleware для проверки авторизации
+router.beforeEach((to, from, next) => {
+  const isAuthenticated = !!localStorage.getItem('access_token');
+
+  if (to.meta.requiresAuth && !isAuthenticated) {
+    // ⏪ Сохраняем, куда пользователь пытался попасть
+    next({
+      path: '/login',
+      query: { redirect: to.fullPath },
+    });
+  } else {
+    next();
+  }
 });
 
 export default router;

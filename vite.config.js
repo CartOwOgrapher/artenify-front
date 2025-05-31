@@ -15,4 +15,7 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   },
+  server: {
+    port: 5174, // ✅ Указан нестандартный порт, чтобы избежать конфликта с Laravel
+  },
 })

@@ -1,75 +1,100 @@
 <template>
-    <div class="login-container">
-      <div class="login-form">
-        <h2>Welcome!</h2>
-        <h3>Sign in to Artenify</h3>
-        <form @submit.prevent="login">
-          <div class="form-group">
-            <label for="username">Login:</label>
-            <input type="text" id="username" v-model="username" required />
-          </div>
-          <div class="form-group">
-            <label for="password">Password:</label>
-            <input type="password" id="password" v-model="password" required />
-          </div>
-          <button type="submit">Login</button>
-        </form>
-        <p><h4>Don't have an Account? <a href="/register">Register</a></h4></p>
-      </div>
-      <div class="login-image">
-        <img src="@/assets/flower.png" alt="Login Image" />
-      </div>
+  <div class="auth-container">
+    <div class="auth-card">
+      <h2>Welcome back!</h2>
+      <h3>Login to Artenify</h3>
+      <form @submit.prevent="login">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" v-model="email" required />
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" v-model="password" required />
+        </div>
+        <div v-if="error" class="error-message">{{ error }}</div>
+        <button type="submit">Login</button>
+      </form>
+      <p class="redirect">
+        Don't have an account?
+        <router-link to="/register">Register</router-link>
+      </p>
     </div>
-  </template>
-  
-  <script>
-  export default {
-    data() {
-      return {
-        username: '',
-        password: ''
-      };
-    },
-    methods: {
-      login() {
-        // Здесь будет логика отправки данных на сервер
-        console.log('Login:', this.username, this.password);
-      }
+  </div>
+</template>
+
+<script>
+import api from '@/axios.js'
+
+export default {
+  props: ['redirect'],
+  data() {
+    return {
+      email: '',
+      password: '',
+      error: null,
     }
-  };
-  </script>
-  
-  <style scoped>
-  /* Стили для страницы входа */
-  .login-container {
+  },
+  methods: {
+    async login() {
+      this.error = null
+      try {
+        const response = await api.post(
+          '/auth/login',
+          {
+            email: this.email,
+            password: this.password,
+          },
+          { withCredentials: true }
+        )
+        const token = response.data.token
+        localStorage.setItem('access_token', token)
+        const redirectPath = this.redirect || '/profile'
+        this.$router.push(redirectPath)
+      } catch (err) {
+        this.error =
+          err.response?.data?.message ||
+          err.response?.data?.error ||
+          'Login failed. Please try again.'
+        console.error(err)
+      }
+    },
+  },
+}
+</script>
+
+<style scoped>
+.auth-container {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
   background-color: #181818;
+  height: 100vh;
+  position: relative;
 }
 
-.login-form {
-  width: 300px;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+.auth-card {
+  width: 320px;
   background-color: white;
+  padding: 30px;
+  border-radius: 3px;
+  z-index: 10;
+}
+
+h2,
+h3 {
+  color: black;
+  margin: 0;
 }
 
 h2 {
-  margin-bottom: 10px;
-  color: black;
+  font-size: 24px;
 }
 
 h3 {
-  font-size: 1.2rem;
+  font-size: 16px;
   margin-bottom: 20px;
-  color: black;
-}
-
-h4 {
-    color: black;
+  color: #555;
 }
 
 .form-group {
@@ -78,16 +103,16 @@ h4 {
 
 label {
   display: block;
-  margin-bottom: 5px;
   color: black;
+  margin-bottom: 5px;
 }
 
-input[type="text"],
-input[type="password"] {
+input {
   width: 100%;
   padding: 10px;
   border: 1px solid #b8b7b7;
   border-radius: 4px;
+  font-size: 14px;
 }
 
 button {
@@ -97,20 +122,35 @@ button {
   color: white;
   border: none;
   border-radius: 4px;
+  font-weight: bold;
   cursor: pointer;
 }
 
 button:hover {
-  background-color: black;
+  background-color: #333;
 }
 
-a {
-  text-decoration: none;
+.redirect {
+  margin-top: 15px;
+  font-size: 14px;
+  color: #333;
+}
+
+.redirect a {
   color: rgb(255, 152, 171);
+  text-decoration: none;
 }
-.login-image {
+
+.error-message {
+  color: red;
+  margin-bottom: 10px;
+}
+
+.auth-image {
   position: absolute;
-  bottom: 0; 
+  bottom: 0;
   right: 0;
+  height: 200px;
+  z-index: 5;
 }
-  </style>
+</style>
