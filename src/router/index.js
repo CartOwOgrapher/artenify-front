@@ -4,6 +4,7 @@ import Login from '../views/Login.vue';
 import Register from '../views/Register.vue';
 import ProfileView from '../views/ProfileView.vue';
 import LeadersView from '../views/LeadersView.vue';
+import PublishView from '@/views/PublishView.vue';
 
 const routes = [
   {
@@ -34,6 +35,10 @@ const routes = [
     component: ProfileView,
     meta: { requiresAuth: true },
   },
+  { 
+    path: '/publish', 
+    name: 'Publish', 
+    component: PublishView },
   {
     path: '/leaders',
     name: 'Leaders',

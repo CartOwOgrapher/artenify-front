@@ -1,55 +1,98 @@
 <template>
   <div class="grid-wrapper">
     <div class="grid-container">
-      <div class="placeholder" v-for="(item, index) in items" :key="index">
-        <img src="@/assets/p_test.png" alt="Placeholder" class="placeholder-img" />
+      <div
+        v-for="(project, index) in displayedProjects"
+        :key="project.id + '-' + index"
+        class="placeholder"
+      >
+        <img
+          v-if="project.images && project.images.length"
+          :src="project.images[0].url"
+          :alt="project.title"
+          class="placeholder-img"
+        />
+        <div v-else class="placeholder-img">Нет изображения</div>
       </div>
     </div>
   </div>
 </template>
 
-  
-  <script>
-  import { ref, onMounted, onUnmounted } from "vue";
-  
-  export default {
-    setup() {
-      const items = ref(Array(12).fill(null)); // Начальное количество плейсхолдеров
-  
-      const loadMore = () => {
-        for (let i = 0; i < 6; i++) {
-          items.value.push(null);
-        }
-      };
-  
-      const handleScroll = () => {
-        const bottomOffset = document.documentElement.scrollHeight - window.innerHeight;
-        if (window.scrollY >= bottomOffset - 100) {  // Загружаем новые при скролле вниз
-          loadMore();
-        }
-      };
-  
-      onMounted(() => {
-        window.addEventListener("scroll", handleScroll);
-      });
-  
-      onUnmounted(() => {
-        window.removeEventListener("scroll", handleScroll);
-      });
-  
-      return { items };
-    },
-  };
-  </script>
+<script setup>
+import { ref, onMounted, onUnmounted } from 'vue'
+import axios from 'axios'
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost/api'
 
-  <style scoped>
+const allProjects = ref([])         // Все проекты, полученные с сервера
+const displayedProjects = ref([])   // Проекты для показа в гриде
 
-  
-  /* Контейнер для всей сетки */
+const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
+const currentUserId = currentUser?.id
+
+// Функция для случайной перестановки массива (Fisher-Yates shuffle)
+function shuffleArray(array) {
+  const arr = array.slice()
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[arr[i], arr[j]] = [arr[j], arr[i]]
+  }
+  return arr
+}
+
+// Добавляет очередную порцию проектов в displayedProjects
+function loadMore() {
+  if (allProjects.value.length === 0) return
+
+  // Возьмём 6 случайных элементов из allProjects (с перемешиванием)
+  const shuffled = shuffleArray(allProjects.value)
+
+  // Добавляем их в конец displayedProjects
+  displayedProjects.value.push(...shuffled.slice(0, 6))
+}
+
+async function fetchProjects() {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/posts`, {
+      params: { page: 1 },
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+        Accept: 'application/json',
+        'Content-Type': 'application/json'
+      }
+    })
+    const posts = response.data.data || []
+    // Фильтруем по user_id, если есть
+    const userPosts = posts.filter(p => p.user_id === currentUserId)
+    allProjects.value = userPosts.length ? userPosts : posts
+
+    // Инициализируем первые 12 элементов в displayedProjects
+    displayedProjects.value = shuffleArray(allProjects.value).slice(0, 12)
+  } catch (e) {
+    console.error('Ошибка при загрузке проектов', e)
+  }
+}
+
+function handleScroll() {
+  const bottomOffset = document.documentElement.scrollHeight - window.innerHeight
+  if (window.scrollY >= bottomOffset - 100) {
+    loadMore()
+  }
+}
+
+onMounted(() => {
+  fetchProjects()
+  window.addEventListener('scroll', handleScroll)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
+})
+</script>
+
+<style scoped>
 .grid-wrapper {
   position: relative;
-  margin-top: px;
   width: 100%;
   background: white;
   z-index: 12;
@@ -60,30 +103,24 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   gap: 55px 20px;
-  
-  /* центрируем сам грид внутри wrapper */
-  max-width: 1920px;    /* или любая желаемая ширина */
-  margin: 0 auto;       /* именно авто-отступы по бокам */
+  max-width: 1920px;
+  margin: 0 auto;
 }
 
+.placeholder {
+  width: 350px;
+  height: 300px;
+  background-color: #ddd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  overflow: hidden;
+}
 
-  
-  /* Один плейсхолдер */
-  .placeholder {
-    width: 350px;
-    height: 300px;
-    background-color: #ddd;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 7px;
-    overflow: hidden;
-  }
-  
-  /* Картинка внутри плейсхолдера */
-  .placeholder-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  </style>
+.placeholder-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+</style>
