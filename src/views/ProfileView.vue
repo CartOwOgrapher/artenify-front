@@ -4,7 +4,7 @@ import axios from 'axios'
 import flowerImg from '@/assets/flower.png' // Аватарка
 
 // Базовый URL для API из env (если нет, fallback на localhost)
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost/api'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost/api/v1'
 
 const projects = ref([])
 const loading = ref(false)

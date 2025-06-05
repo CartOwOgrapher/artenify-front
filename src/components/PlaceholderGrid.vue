@@ -8,7 +8,7 @@
       >
         <img
           v-if="project.images && project.images.length"
-          :src="project.images[0].url"
+          :src="`${api.defaults.imageURL}/${project.images[0].path}`" 
           :alt="project.title"
           class="placeholder-img"
         />
@@ -20,9 +20,8 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import axios from 'axios'
+import api from '@/axios.js'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost/api'
 
 const allProjects = ref([])         // Все проекты, полученные с сервера
 const displayedProjects = ref([])   // Проекты для показа в гриде
@@ -53,10 +52,9 @@ function loadMore() {
 
 async function fetchProjects() {
   try {
-    const response = await axios.get(`${API_BASE_URL}/posts`, {
+    const response = await api.get('/posts', {
       params: { page: 1 },
       headers: {
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
         Accept: 'application/json',
         'Content-Type': 'application/json'
       }
