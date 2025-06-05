@@ -112,47 +112,49 @@ export default {
 </script>
 
 <style scoped>
+/* Базовые стили хедера */
 .header {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100vw;
+  width: 100%;
   height: 65px;
   background: white;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   z-index: 1000;
+  padding: 0 15px;
+  box-sizing: border-box;
 }
 
 .container {
   width: 100%;
+  height: 100%;
   max-width: 1920px;
+  margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
 }
 
 .left {
   display: flex;
   align-items: center;
+  gap: 20px;
 }
 
 .logo {
-  margin-left: 20px;
+  cursor: pointer;
 }
 
 .logo img {
-  height: 100px;
-  max-width: 100%;
+  height: 40px;
+  width: auto;
+  object-fit: contain;
 }
 
 .nav {
   display: flex;
-  gap: 25px;
-  margin-left: 20px;
+  gap: 15px;
 }
 
 .nav a,
@@ -160,7 +162,7 @@ export default {
   text-decoration: none;
   color: #630D46;
   font-weight: 500;
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .auth-buttons {
@@ -171,11 +173,12 @@ export default {
 
 button {
   border: none;
-  padding: 8px 15px;
+  padding: 8px 12px;
   border-radius: 5px;
   cursor: pointer;
   font-weight: 500;
-  font-size: 18px;
+  font-size: 16px;
+  white-space: nowrap;
 }
 
 .login {
@@ -188,100 +191,87 @@ button {
   color: white;
 }
 
-/* Новая кнопка "Опубликовать проект" */
-.publish-project {
-  background: #ff69b4;
-  color: white;
-  padding: 8px 15px;
-  border-radius: 5px;
-  font-weight: 500;
-  font-size: 18px;
-  cursor: pointer;
-  border: none;
-  margin-right: 10px;
-}
-
-/* Иконки сообщений и уведомлений */
-.icon-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Аватарка */
-.avatar-link {
-  display: inline-block;
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  overflow: hidden;
-  margin-left: 10px;
-  cursor: pointer;
-  border: 2px solid #630D46;
-}
-
-.avatar {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 50%;
-}
-
-/* Кнопка выхода */
+/* Стили для авторизованного состояния */
+.publish-project,
+.icon-btn,
+.avatar-link,
 .logout {
-  background: none;
-  color: #630D46;
-  border: 1px solid #630D46;
-  padding: 8px 15px;
-  border-radius: 5px;
-  font-weight: 500;
-  font-size: 18px;
-  cursor: pointer;
-  margin-left: 10px;
+  display: none; /* По умолчанию скрываем для мобильных */
 }
 
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(10px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
+/* Мобильная версия (менее 500px) */
+@media (max-width: 500px) {
+  .header {
+    height: 60px;
+    padding: 0 10px;
+  }
+  
+  .logo img {
+    height: 35px;
+  }
+  
+  /* Скрываем навигацию и дополнительные элементы */
+  .nav,
+  .auth-buttons > *:not(.login):not(.register) {
+    display: none;
+  }
+  
+  /* Показываем только кнопку входа/регистрации */
+  .auth-buttons {
+    gap: 5px;
+  }
+  
+  button {
+    padding: 6px 10px;
+    font-size: 14px;
+  }
+  
+  /* Для авторизованных пользователей */
+  .auth-buttons .login,
+  .auth-buttons .logout {
+    display: block;
+  }
 }
 
-.modal-content {
-  background: white;
-  padding: 20px;
-  border-radius: 10px;
-  width: 350px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-  text-align: center;
-}
-
-.modal-fade-enter-active, .modal-fade-leave-active {
-  transition: opacity 0.3s ease, transform 0.3s ease;
-}
-.modal-fade-enter-from, .modal-fade-leave-to {
-  opacity: 0;
-  transform: scale(0.9);
-}
-
-.close-btn {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  background: none;
-  border: none;
-  font-size: 20px;
-  cursor: pointer;
+/* Десктопная версия для авторизованных пользователей */
+@media (min-width: 501px) {
+  .publish-project,
+  .icon-btn,
+  .avatar-link,
+  .logout {
+    display: flex;
+  }
+  
+  .publish-project {
+    background: #ff69b4;
+    color: white;
+    margin-right: 10px;
+  }
+  
+  .icon-btn {
+    background: none;
+    padding: 0 8px;
+  }
+  
+  .avatar-link {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid #630D46;
+  }
+  
+  .avatar {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .logout {
+    background: none;
+    color: #630D46;
+    border: 1px solid #630D46;
+    margin-left: 10px;
+  }
 }
 </style>

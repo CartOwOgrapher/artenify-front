@@ -73,84 +73,140 @@ export default {
 </script>
 
 <style scoped>
+/* Base styles */
 .auth-container {
   display: flex;
   justify-content: center;
   align-items: center;
+  position: fixed;  /* Изменено с sticky на fixed для надежности */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background-color: #181818;
-  height: 100vh;
+  z-index: 100;
+  overflow: auto;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
+/* Карточка с формой */
 .auth-card {
-  width: 320px;
+  width: 100%;
+  max-width: 400px;  /* Фиксированная максимальная ширина */
+  min-width: 300px;  /* Минимальная ширина для маленьких экранов */
   background-color: white;
-  padding: 30px;
-  border-radius: 10px;
-  z-index: 10;
+  padding: 40px;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  margin: auto;  /* Дополнительный margin для подстраховки */
 }
 
-h2,
-h3 {
-  color: black;
-  margin: 0;
+.auth-card:hover {
+  transform: translateY(-5px);
 }
 
-h2 {
-  font-size: 24px;
+/* Typography */
+.auth-card h2 {
+  font-size: 28px;
+  font-weight: 700;
+  color: #222;
+  margin: 0 0 5px 0;
+  line-height: 1.2;
 }
 
-h3 {
+.auth-card h3 {
   font-size: 16px;
-  margin-bottom: 20px;
-  color: #555;
+  font-weight: 400;
+  color: #666;
+  margin: 0 0 30px 0;
 }
 
+/* Form elements */
 .form-group {
-  margin-bottom: 15px;
+  margin-bottom: 20px;
 }
 
-label {
+.form-group label {
   display: block;
-  color: black;
-  margin-bottom: 5px;
-}
-
-input {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #b8b7b7;
-  border-radius: 4px;
   font-size: 14px;
+  color: #444;
+  margin-bottom: 8px;
+  font-weight: 500;
 }
 
-button {
+.form-group input {
   width: 100%;
-  padding: 10px;
-  background-color: black;
+  padding: 12px 15px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 15px;
+  transition: border-color 0.3s;
+  box-sizing: border-box;
+}
+
+.form-group input:focus {
+  border-color: #555;
+  outline: none;
+}
+
+/* Button styles */
+button[type="submit"] {
+  width: 100%;
+  padding: 14px;
+  background-color: #000;
   color: white;
   border: none;
-  border-radius: 4px;
-  font-weight: bold;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
   cursor: pointer;
+  transition: background-color 0.3s;
+  margin-top: 10px;
 }
 
-button:hover {
+button[type="submit"]:hover {
   background-color: #333;
 }
 
+/* Additional links */
 .redirect {
-  margin-top: 15px;
+  text-align: center;
+  margin-top: 25px;
   font-size: 14px;
-  color: #333;
+  color: #666;
 }
 
 .redirect a {
-  color: rgb(255, 152, 171);
+  color: #ff98ab;
   text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
 }
 
+.redirect a:hover {
+  color: #ff6b8b;
+}
+
+/* Error message */
 .error-message {
-  color: red;
-  margin-bottom: 10px;
+  color: #e74c3c;
+  font-size: 14px;
+  margin: 15px 0;
+  text-align: center;
+  padding: 10px;
+  background-color: rgba(231, 76, 60, 0.1);
+  border-radius: 4px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 30px 20px;
+  }
+  
+  .auth-card h2 {
+    font-size: 24px;
+  }
 }
 </style>
