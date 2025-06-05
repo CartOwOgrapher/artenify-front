@@ -2,6 +2,7 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: 'http://localhost/api/v1', // путь к Laravel API
+  imageURL: 'http://localhost',
   withCredentials: true, // для работы с refresh_token cookie
 });
 
