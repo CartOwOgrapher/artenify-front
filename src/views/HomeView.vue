@@ -7,7 +7,7 @@ import PlaceholderGrid from '@/components/PlaceholderGrid.vue'
   <main>
     <!-- Фоновые картинки -->
     <img class="bg-left" src="@/assets/L_background.png" alt="Left Background" />
-    <img class="bg-right" src="@/assets/R_background.png" alt="Right Background" />
+    <img class="bg-right" src="@/assets/R_background.png" alt="Right Background" /> 
 
     <!-- Основной контент -->
     <div>
@@ -50,12 +50,17 @@ import PlaceholderGrid from '@/components/PlaceholderGrid.vue'
   z-index: 10;
 }
 .bg-left { left: 0; }
-.bg-right { right: 0; }
+.bg-right { right: 0;
+z-index: 8;
+}
+
+
 
 /* Логотип */
 .logo-container {
   position: absolute;
   top: 105px;
+  margin-left: 300px ;
   /* Центрируем между bg-left и bg-right */
   left: calc(250px + (100vw - 1120px) / 2);
   transform: translateX(-50%);
@@ -67,13 +72,99 @@ import PlaceholderGrid from '@/components/PlaceholderGrid.vue'
 /* Контейнер плейсхолдеров */
 .placeholders-wrapper {
   position: absolute;
-  top: 200px; /* общий отступ сверху */
+  top: 200px;
   left: 45%;
   transform: translateX(-50%);
-  width: 1200px; /* ширина блока: сумма ширин + промежутков между плейсхолдерами (подберите точнее) */
+  width: 1200px;
   height: auto;
   z-index: 9;
-  /* Можно добавить user-select:none или pointer-events:none, если нужно */
+
+  /* Добавляем transition для плавности */
+  transform-origin: top left;
+  transition: transform 0.3s ease;
+
+}
+
+/* === Адаптивные масштабирования через медиазапросы === */
+
+@media (max-width: 1400px) {
+  .placeholders-wrapper {
+    transform: translateX(-40%) scale(0.9);
+    
+  }
+}
+
+@media (max-width: 1300px) {
+  .placeholders-wrapper {
+    transform: translateX(-35%) scale(0.85);
+  }
+}
+
+@media (max-width: 1200px) {
+  .placeholders-wrapper {
+    transform: translateX(-30%) scale(0.80);
+  }
+}
+
+@media (max-width: 1100px) {
+  .placeholders-wrapper {
+    transform: translateX(-25%) scale(0.75);
+  }
+}
+
+@media (max-width: 1000px) {
+  .placeholders-wrapper {
+    transform: translateX(-25%) scale(0.70);
+  }
+}
+
+@media (max-width: 900px) {
+  .placeholders-wrapper {
+    transform: translateX(-20%) scale(0.65);
+  }
+}
+
+@media (max-width: 800px) {
+  .placeholders-wrapper {
+    transform: translateX(-20%) scale(0.6);
+  }
+}
+
+@media (max-width: 700px) {
+  .placeholders-wrapper {
+    transform: translateX(-15%) scale(0.55);
+  }
+}
+
+@media (max-width: 600px) {
+  .placeholders-wrapper {
+    transform: translateX(-15%) scale(0.5);
+    top: 250px;
+  }
+}
+
+@media (max-width: 800px) {
+  .placeholders-wrapper {
+    z-index: 12;
+  }
+}
+
+@media (max-width: 500px) {
+  .placeholder.placeholder-4 {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+@media (max-width: 431px) {
+  .placeholder.placeholder-2 {
+    opacity: 0;
+    visibility: hidden;
+
+  }
+  .placeholders-wrapper {
+    margin-left: 50px;
+  }
 }
 
 /* Плейсхолдеры - внутри контейнера позиционируются абсолютно */
@@ -88,6 +179,10 @@ import PlaceholderGrid from '@/components/PlaceholderGrid.vue'
   overflow: hidden;
   cursor: pointer;
   z-index: 9;
+
+      border: 2px solid rgba(255, 255, 255, 0.6); /* белая полупрозрачная обводка */
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); /* мягкая тень */
+  border-radius: 12px; /* скругление углов, если нужно */
 }
 
 .placeholder:hover .placeholder-img {
@@ -113,17 +208,20 @@ import PlaceholderGrid from '@/components/PlaceholderGrid.vue'
   left: calc(0px + 418px + 20px); /* 438px справа от первого */
   top: 95px;
   z-index: 11;
+  transition: opacity 0.5s ease, visibility 0.5s ease;
 }
 
 .placeholder-3 {
   left: calc(0px + 454px + 40px - 320px); /* ваша формула */
-  top: calc(95px + 350px);
+  top: calc(95px + 300px);
   z-index: 11;
+  
 }
 
 .placeholder-4 {
   left: calc(0px + 454px + 40px - 260px + 380px);
-  top: calc(95px + 27px + 400px);
+  top: calc(95px + 27px + 370px);
   z-index: 11;
+  transition: opacity 0.5s ease, visibility 0.5s ease;
 }
 </style>

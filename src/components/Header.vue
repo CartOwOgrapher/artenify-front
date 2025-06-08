@@ -352,10 +352,6 @@ button {
     display: flex;
   }
   
-  /* .auth-buttons .login,
-  .auth-buttons .register {
-    display: block;
-  } */
 }
 
 @media (max-width: 480px) {

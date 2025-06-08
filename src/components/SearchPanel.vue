@@ -30,7 +30,7 @@ const isMobile = computed(() => {
 <style>
 .search-panel {
   position: sticky;
-  margin-top: 900px;
+  margin-top: 910px;
   top: 65px;
   width: 100vw;
   height: 67px;
@@ -42,6 +42,19 @@ const isMobile = computed(() => {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   z-index: 999;
   box-sizing: border-box;
+}
+
+@media (max-width: 1400px) {
+  .search-panel{
+    margin-top: 850px;
+    
+  }
+}
+@media (max-width: 1300px) {
+  .search-panel{
+    margin-top: 810px;
+    
+  }
 }
 
 .filter-btn,
