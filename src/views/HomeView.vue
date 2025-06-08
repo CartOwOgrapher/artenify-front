@@ -72,7 +72,7 @@ z-index: 8;
 /* Контейнер плейсхолдеров */
 .placeholders-wrapper {
   position: absolute;
-  top: 200px;
+  top: 150px;
   left: 45%;
   transform: translateX(-50%);
   width: 1200px;
@@ -180,9 +180,7 @@ z-index: 8;
   cursor: pointer;
   z-index: 9;
 
-      border: 2px solid rgba(255, 255, 255, 0.6); /* белая полупрозрачная обводка */
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); /* мягкая тень */
-  border-radius: 12px; /* скругление углов, если нужно */
+
 }
 
 .placeholder:hover .placeholder-img {
@@ -194,6 +192,7 @@ z-index: 8;
   width: 77%;
   height: 77%;
   object-fit: cover;
+  transition: filter 0.3s ease;
 }
 
 /* Отступы внутри контейнера */
@@ -206,7 +205,7 @@ z-index: 8;
 
 .placeholder-2 {
   left: calc(0px + 418px + 20px); /* 438px справа от первого */
-  top: 95px;
+  top: 60px;
   z-index: 11;
   transition: opacity 0.5s ease, visibility 0.5s ease;
 }
@@ -220,7 +219,7 @@ z-index: 8;
 
 .placeholder-4 {
   left: calc(0px + 454px + 40px - 260px + 380px);
-  top: calc(95px + 27px + 370px);
+  top: calc(95px + 27px + 300px);
   z-index: 11;
   transition: opacity 0.5s ease, visibility 0.5s ease;
 }
