@@ -90,4 +90,20 @@ const users = [
   border-radius: 50%;
   object-fit: cover;
 }
+
+td{
+  color: #831283;
+  text-shadow: 4px -0.5px 4px #fd05fd;
+  font-weight: 500;
+}
+
+th{
+  color: #831283;
+  text-shadow: 4px -0.2px 4px #fd05fd;
+  font-weight: 500;
+}
+
+h2{
+  color: #c000c0;
+}
 </style>
