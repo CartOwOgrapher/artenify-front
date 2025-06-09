@@ -6,26 +6,46 @@ import flowerImg from '@/assets/flower.png'
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost/api/v1'
 
 const projects = ref([])
+const userName = ref("Пользователь")
 const loading = ref(false)
 const error = ref(null)
 const activeTab = ref('Проекты')
 const bannerImage = ref(null)
 const isDragOver = ref(false)
 
-const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
+const currentUser = JSON.parse(localStorage.getItem('user'))
 const currentUserId = currentUser?.id
 
 const fileInput = ref(null)
+
+async function fetchUserProfile() {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/profile/me`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      }
+    })
+
+    userName.value = response.data.name
+  } catch (err) {
+    console.log(localStorage)
+    userName.value = 'Неизвестный пользователь'
+  }
+}
 
 onMounted(async () => {
   loading.value = true
   error.value = null
 
+  await fetchUserProfile()
+
   try {
     const response = await axios.get(`${API_BASE_URL}/posts`, {
       params: { page: 1 },
       headers: {
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
+        Authorization: `Bearer ${localStorage.getItem('access_token')}`,
         Accept: 'application/json',
         'Content-Type': 'application/json'
       }
@@ -77,33 +97,21 @@ function onDrop(event) {
 <template>
   <div class="profile-container">
     <!-- Баннер с кликом и Drag & Drop -->
-    <div
-      class="profile-banner"
-      :class="{ 'drag-over': isDragOver }"
-      :style="{ backgroundImage: bannerImage ? 'url(' + bannerImage + ')' : '' }"
-      @click="triggerFileInput"
-      @dragover.prevent="onDragOver"
-      @dragleave.prevent="onDragLeave"
-      @drop.prevent="onDrop"
-    >
+    <div class="profile-banner" :class="{ 'drag-over': isDragOver }"
+      :style="{ backgroundImage: bannerImage ? 'url(' + bannerImage + ')' : '' }" @click="triggerFileInput"
+      @dragover.prevent="onDragOver" @dragleave.prevent="onDragLeave" @drop.prevent="onDrop">
       <div class="banner-placeholder" v-if="!bannerImage">
         <span>Добавить изображение баннера</span>
         <small>Оптимальные размеры 3200 x 410px</small>
       </div>
-      <input
-        ref="fileInput"
-        type="file"
-        accept="image/*"
-        @change="handleBannerUpload"
-        class="banner-upload"
-      />
+      <input ref="fileInput" type="file" accept="image/*" @change="handleBannerUpload" class="banner-upload" />
     </div>
 
     <!-- Инфо пользователя -->
     <div class="profile-header">
       <img class="avatar" :src="flowerImg" alt="Avatar" />
       <div class="info">
-        <h2>{{ currentUser.name || 'Пользователь' }}</h2>
+        <h2>{{ userName }}</h2>
         <p>Подписки: <b>228</b> | Подписчики: <b>1337</b></p>
         <div class="buttons">
           <button class="edit">✏️ Редактировать профиль</button>
@@ -115,12 +123,8 @@ function onDrop(event) {
 
     <!-- Вкладки -->
     <nav class="profile-tabs">
-      <span
-        v-for="tab in ['Проекты', 'Избранное', 'Понравившееся', 'Продвижение+', 'Статистика', 'Черновики']"
-        :key="tab"
-        :class="{ active: activeTab === tab }"
-        @click="changeTab(tab)"
-      >
+      <span v-for="tab in ['Проекты', 'Избранное', 'Понравившееся', 'Продвижение+', 'Статистика', 'Черновики']" :key="tab"
+        :class="{ active: activeTab === tab }" @click="changeTab(tab)">
         {{ tab }}
       </span>
     </nav>
@@ -129,16 +133,8 @@ function onDrop(event) {
     <div v-if="activeTab === 'Проекты'" class="projects">
       <h3>Проекты</h3>
       <div class="project-grid">
-        <div
-          v-for="project in projects"
-          :key="project.id"
-          class="project-card"
-        >
-          <img
-            v-if="project.images && project.images.length"
-            :src="project.images[0].url"
-            :alt="project.title"
-          />
+        <div v-for="project in projects" :key="project.id" class="project-card">
+          <img v-if="project.images && project.images.length" :src="project.images[0].url" :alt="project.title" />
           <div class="project-title">{{ project.title }}</div>
         </div>
       </div>
@@ -224,7 +220,8 @@ function onDrop(event) {
 }
 
 .banner-upload {
-  display: none; /* Скрываем кнопку выбора файла */
+  display: none;
+  /* Скрываем кнопку выбора файла */
 }
 
 .profile-header {
@@ -252,7 +249,8 @@ function onDrop(event) {
   gap: 0.5rem;
 }
 
-.edit, .setup {
+.edit,
+.setup {
   padding: 0.5rem 1rem;
   border: none;
   border-radius: 6px;

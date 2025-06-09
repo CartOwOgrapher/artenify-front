@@ -1,6 +1,24 @@
 <script setup>
+import { ref } from 'vue'
 import SearchPanel from '@/components/SearchPanel.vue'
 import PlaceholderGrid from '@/components/PlaceholderGrid.vue'
+
+// реактивный объект с фильтрами
+const filters = ref({
+  search: '',
+  sort: ''
+})
+
+// вызывается из SearchPanel.vue
+function onFilterChanged({ search, sort }) {
+  filters.value = { search, sort }
+}
+
+// вызывается при клике на иконку поиска по картинке
+function onImageSearch() {
+  // здесь ваша логика «поиск по картинке»
+  console.log('Image search triggered')
+}
 </script>
 
 <template>
@@ -11,8 +29,13 @@ import PlaceholderGrid from '@/components/PlaceholderGrid.vue'
 
     <!-- Основной контент -->
     <div>
-      <SearchPanel />
-      <PlaceholderGrid />
+      <SearchPanel
+        @filter-changed="onFilterChanged"
+        @image-search="onImageSearch"
+      />
+
+      <!-- Передаём filters в PlaceholderGrid -->
+      <PlaceholderGrid :filters="filters" />
 
       <!-- Логотип -->
       <div class="logo-container">
@@ -56,7 +79,6 @@ import PlaceholderGrid from '@/components/PlaceholderGrid.vue'
 .logo-container {
   position: absolute;
   top: 105px;
-  /* Центрируем между bg-left и bg-right */
   left: calc(250px + (100vw - 1120px) / 2);
   transform: translateX(-50%);
   z-index: 9;
@@ -67,16 +89,13 @@ import PlaceholderGrid from '@/components/PlaceholderGrid.vue'
 /* Контейнер плейсхолдеров */
 .placeholders-wrapper {
   position: absolute;
-  top: 200px; /* общий отступ сверху */
+  top: 200px;
   left: 45%;
   transform: translateX(-50%);
-  width: 1200px; /* ширина блока: сумма ширин + промежутков между плейсхолдерами (подберите точнее) */
-  height: auto;
+  width: 1200px;
   z-index: 9;
-  /* Можно добавить user-select:none или pointer-events:none, если нужно */
 }
 
-/* Плейсхолдеры - внутри контейнера позиционируются абсолютно */
 .placeholder {
   position: absolute;
   width: 454px;
@@ -101,26 +120,22 @@ import PlaceholderGrid from '@/components/PlaceholderGrid.vue'
   object-fit: cover;
 }
 
-/* Отступы внутри контейнера */
-/* Для top - поднимаем так, чтобы placeholder-1 был на top:0 */
+/* Позиции конкретных плейсхолдеров */
 .placeholder-1 {
-  left: 0px;
+  left: 0;
   top: 0;
   z-index: 11;
 }
-
 .placeholder-2 {
-  left: calc(0px + 418px + 20px); /* 438px справа от первого */
+  left: calc(0px + 418px + 20px);
   top: 95px;
   z-index: 11;
 }
-
 .placeholder-3 {
-  left: calc(0px + 454px + 40px - 320px); /* ваша формула */
+  left: calc(0px + 454px + 40px - 320px);
   top: calc(95px + 350px);
   z-index: 11;
 }
-
 .placeholder-4 {
   left: calc(0px + 454px + 40px - 260px + 380px);
   top: calc(95px + 27px + 400px);

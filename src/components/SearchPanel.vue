@@ -40,7 +40,7 @@ const isMobile = computed(() => {
   justify-content: space-around;
   padding: 0 20px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  z-index: 999;
+  z-index: 200;
   box-sizing: border-box;
 }
 
