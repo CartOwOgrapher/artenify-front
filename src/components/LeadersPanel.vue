@@ -8,7 +8,7 @@
 .leaders-panel {
   position: sticky;
   top: 65px;
-  margin-top: 800px;
+  margin-top: 870px;
   width: 100vw;
   height: 67px;
   background: white;

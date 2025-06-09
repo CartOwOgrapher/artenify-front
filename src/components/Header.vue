@@ -181,7 +181,7 @@ export default {
 }
 
 .logo img {
-  height: 40px;
+  height: 100px;
   width: auto;
   object-fit: contain;
 }

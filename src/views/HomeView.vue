@@ -7,7 +7,7 @@ import PlaceholderGrid from '@/components/PlaceholderGrid.vue'
   <main>
     <!-- Фоновые картинки -->
     <img class="bg-left" src="@/assets/L_background.png" alt="Left Background" />
-    <img class="bg-right" src="@/assets/R_background.png" alt="Right Background" /> 
+    <img class="bg-right" src="@/assets/R_background.png" alt="Right Background" />
 
     <!-- Основной контент -->
     <div>
@@ -50,17 +50,12 @@ import PlaceholderGrid from '@/components/PlaceholderGrid.vue'
   z-index: 10;
 }
 .bg-left { left: 0; }
-.bg-right { right: 0;
-z-index: 8;
-}
-
-
+.bg-right { right: 0; }
 
 /* Логотип */
 .logo-container {
   position: absolute;
   top: 105px;
-  margin-left: 300px ;
   /* Центрируем между bg-left и bg-right */
   left: calc(250px + (100vw - 1120px) / 2);
   transform: translateX(-50%);
@@ -72,99 +67,13 @@ z-index: 8;
 /* Контейнер плейсхолдеров */
 .placeholders-wrapper {
   position: absolute;
-  top: 150px;
+  top: 200px; /* общий отступ сверху */
   left: 45%;
   transform: translateX(-50%);
-  width: 1200px;
+  width: 1200px; /* ширина блока: сумма ширин + промежутков между плейсхолдерами (подберите точнее) */
   height: auto;
   z-index: 9;
-
-  /* Добавляем transition для плавности */
-  transform-origin: top left;
-  transition: transform 0.3s ease;
-
-}
-
-/* === Адаптивные масштабирования через медиазапросы === */
-
-@media (max-width: 1400px) {
-  .placeholders-wrapper {
-    transform: translateX(-40%) scale(0.9);
-    
-  }
-}
-
-@media (max-width: 1300px) {
-  .placeholders-wrapper {
-    transform: translateX(-35%) scale(0.85);
-  }
-}
-
-@media (max-width: 1200px) {
-  .placeholders-wrapper {
-    transform: translateX(-30%) scale(0.80);
-  }
-}
-
-@media (max-width: 1100px) {
-  .placeholders-wrapper {
-    transform: translateX(-25%) scale(0.75);
-  }
-}
-
-@media (max-width: 1000px) {
-  .placeholders-wrapper {
-    transform: translateX(-25%) scale(0.70);
-  }
-}
-
-@media (max-width: 900px) {
-  .placeholders-wrapper {
-    transform: translateX(-20%) scale(0.65);
-  }
-}
-
-@media (max-width: 800px) {
-  .placeholders-wrapper {
-    transform: translateX(-20%) scale(0.6);
-  }
-}
-
-@media (max-width: 700px) {
-  .placeholders-wrapper {
-    transform: translateX(-15%) scale(0.55);
-  }
-}
-
-@media (max-width: 600px) {
-  .placeholders-wrapper {
-    transform: translateX(-15%) scale(0.5);
-    top: 250px;
-  }
-}
-
-@media (max-width: 800px) {
-  .placeholders-wrapper {
-    z-index: 12;
-  }
-}
-
-@media (max-width: 500px) {
-  .placeholder.placeholder-4 {
-    opacity: 0;
-    visibility: hidden;
-  }
-}
-
-@media (max-width: 431px) {
-  .placeholder.placeholder-2 {
-    opacity: 0;
-    visibility: hidden;
-
-  }
-  .placeholders-wrapper {
-    margin-left: 50px;
-  }
+  /* Можно добавить user-select:none или pointer-events:none, если нужно */
 }
 
 /* Плейсхолдеры - внутри контейнера позиционируются абсолютно */
@@ -179,8 +88,6 @@ z-index: 8;
   overflow: hidden;
   cursor: pointer;
   z-index: 9;
-
-
 }
 
 .placeholder:hover .placeholder-img {
@@ -192,7 +99,6 @@ z-index: 8;
   width: 77%;
   height: 77%;
   object-fit: cover;
-  transition: filter 0.3s ease;
 }
 
 /* Отступы внутри контейнера */
@@ -205,22 +111,19 @@ z-index: 8;
 
 .placeholder-2 {
   left: calc(0px + 418px + 20px); /* 438px справа от первого */
-  top: 60px;
+  top: 95px;
   z-index: 11;
-  transition: opacity 0.5s ease, visibility 0.5s ease;
 }
 
 .placeholder-3 {
   left: calc(0px + 454px + 40px - 320px); /* ваша формула */
-  top: calc(95px + 300px);
+  top: calc(95px + 350px);
   z-index: 11;
-  
 }
 
 .placeholder-4 {
   left: calc(0px + 454px + 40px - 260px + 380px);
-  top: calc(95px + 27px + 300px);
+  top: calc(95px + 27px + 400px);
   z-index: 11;
-  transition: opacity 0.5s ease, visibility 0.5s ease;
 }
 </style>
