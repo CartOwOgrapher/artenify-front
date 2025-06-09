@@ -43,7 +43,6 @@ const routes = [
     path: '/leaders',
     name: 'Leaders',
     component: LeadersView,
-    meta: { requiresAuth: true },
   },
 ];
 
