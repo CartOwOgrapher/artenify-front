@@ -15,6 +15,7 @@ const userCreated = ref()
 const selectedProject = ref(null)
 const subscriptionsCount = ref(0)
 const subscribersCount = ref(0)
+const profileViews = ref(0);
 
 // Лайки в модальном окне
 const likeCount = ref(0)
@@ -53,6 +54,7 @@ async function fetchUserProfile() {
     const { data } = await api.get(`/profile/me`, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
     userName.value = data.name
     userCreated.value = data.created_at
+    profileViews.value = data.views;
   } catch {
     userName.value = 'Неизвестный пользователь'
   } finally {
@@ -196,6 +198,9 @@ function onDrop(e) { isDragOver.value = false; const f = e.dataTransfer.files[0]
         <h2 v-if="loadingProfile"><div class="spinner"></div></h2>
         <h2 v-else>{{ userName }}</h2>
         <p>Подписки: <b>{{ subscriptionsCount }}</b> | Подписчики: <b>{{ subscribersCount }}</b></p>
+        <p class="views-counter">
+          <span>👁️ Просмотры профиля: <b>{{ profileViews }}</b></span>
+        </p>
         <div class="buttons"><button class="edit">✏️ Редактировать профиль</button><button class="setup">⚙️ Настроить профиль <span class="tag">artenify+</span></button></div>
         <p class="reg-date">{{ formattedRegDate }}</p>
       </div>
