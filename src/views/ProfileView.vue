@@ -1,7 +1,9 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue' // Добавлен computed
 import api from '@/axios.js'
 import flowerImg from '@/assets/flower.png'
+import { format, parseISO } from 'date-fns' // Добавлены функции для работы с датами
+import { ru } from 'date-fns/locale' // Добавлена русская локализация
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost/api/v1'
 
@@ -9,7 +11,11 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost/api/
 const projects = ref([])
 const likedProjects = ref([])
 const userName = ref("Пользователь")
+const userCreated = ref()
 const selectedProject = ref(null)
+const subscriptionsCount = ref(0)
+const subscribersCount = ref(0)
+const profileViews = ref(0);
 
 // Лайки в модальном окне
 const likeCount = ref(0)
@@ -40,19 +46,32 @@ async function fetchLikeCount(postId) {
   }
 }
 
+
 // 1) Профиль
 async function fetchUserProfile() {
   loadingProfile.value = true
   try {
     const { data } = await api.get(`/profile/me`, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
     userName.value = data.name
+    userCreated.value = data.created_at
+    profileViews.value = data.views;
   } catch {
     userName.value = 'Неизвестный пользователь'
   } finally {
     loadingProfile.value = false
   }
 }
-
+const formattedRegDate = computed(() => {
+  if (!userCreated.value) return 'Дата регистрации: неизвестна'
+  
+  try {
+    const date = parseISO(userCreated.value)
+    return `Дата регистрации: ${format(date, 'd MMMM yyyy г.', { locale: ru })}`
+  } catch (e) {
+    console.error('Ошибка форматирования даты', e)
+    return 'Дата регистрации: неизвестна'
+  }
+})
 // 2) Все проекты с лайккаунтом
 async function fetchUserProjects() {
   loadingProjects.value = true
@@ -108,6 +127,30 @@ async function fetchLikes(postId) {
   }
 }
 
+async function fetchSubscriptionsCount() {
+  try {
+    const res = await api.get('/subscriptions/subscriptions', { 
+      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } 
+    })
+    subscriptionsCount.value = res.data.subscribtions?.length || 0
+  } catch (error) {
+    console.error('Ошибка при получении подписок:', error)
+    subscriptionsCount.value = 0
+  }
+}
+
+async function fetchSubscribersCount() {
+  try {
+    const res = await api.get('/subscriptions/subscribers', { 
+      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } 
+    })
+    subscribersCount.value = res.data.subscribers?.length || 0
+  } catch (error) {
+    console.error('Ошибка при получении подписчиков:', error)
+    subscribersCount.value = 0
+  }
+}
+
 // 5) Переключатель лайка
 async function toggleLike() {
   if (!selectedProject.value) return
@@ -130,7 +173,7 @@ async function toggleLike() {
 function openModal(p) { selectedProject.value = p; fetchLikes(p.id) }
 function closeModal() { selectedProject.value = null }
 
-onMounted(async () => { await fetchUserProfile(); await Promise.all([fetchUserProjects(), fetchLikedProjects()]) })
+onMounted(async () => { await fetchUserProfile(); await Promise.all([fetchUserProjects(), fetchLikedProjects(), fetchSubscriptionsCount(), fetchSubscribersCount()]) })
 
 function changeTab(tab) { activeTab.value = tab }
 function triggerFileInput() { fileInput.value?.click() }
@@ -154,9 +197,12 @@ function onDrop(e) { isDragOver.value = false; const f = e.dataTransfer.files[0]
       <div class="info">
         <h2 v-if="loadingProfile"><div class="spinner"></div></h2>
         <h2 v-else>{{ userName }}</h2>
-        <p>Подписки: <b>228</b> | Подписчики: <b>1337</b></p>
+        <p>Подписки: <b>{{ subscriptionsCount }}</b> | Подписчики: <b>{{ subscribersCount }}</b></p>
+        <p class="views-counter">
+          <span>👁️ Просмотры профиля: <b>{{ profileViews }}</b></span>
+        </p>
         <div class="buttons"><button class="edit">✏️ Редактировать профиль</button><button class="setup">⚙️ Настроить профиль <span class="tag">artenify+</span></button></div>
-        <p class="reg-date">Дата регистрации: 15 апреля 2022 г.</p>
+        <p class="reg-date">{{ formattedRegDate }}</p>
       </div>
     </div>
 
