@@ -2,7 +2,16 @@
 import { ref, onMounted, computed } from 'vue'
 import api from '@/axios.js'
 import flowerImg from '@/assets/flower.png'
+import { format, parseISO } from 'date-fns'
+import { ru } from 'date-fns/locale'
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost/api/v1'
+
+const projects = ref([])
+const likedProjects = ref([])
+const favoritedProjects = ref([])
+
+const userName = ref("Пользователь")
 const userCreated = ref()
 const selectedProject = ref(null)
 const subscriptionsCount = ref(0)
@@ -22,10 +31,8 @@ const activeTab = ref('Проекты')
 const bannerImage = ref(null)
 const isDragOver = ref(false)
 
-const currentUser = store.getters.user
+const currentUser = JSON.parse(localStorage.getItem('user'))
 const currentUserId = currentUser?.id
-const profileUser = ref(null)
-const isMyProfile = ref(false)
 
 const fileInput = ref(null)
 
@@ -38,6 +45,17 @@ async function fetchLikeCount(postId) {
   }
 }
 
+async function fetchUserProfile() {
+  loadingProfile.value = true
+  try {
+    const { data } = await api.get(`/profile/me`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
+    })
+    userName.value = data.name
+    userCreated.value = data.created_at
+    profileViews.value = data.views
+  } catch {
+    userName.value = 'Неизвестный пользователь'
   } finally {
     loadingProfile.value = false
   }
@@ -53,6 +71,21 @@ const formattedRegDate = computed(() => {
     return 'Дата регистрации: неизвестна'
   }
 })
+
+async function fetchUserProjects() {
+  loadingProjects.value = true
+  try {
+    const { data } = await api.get(`/posts`, {
+      params: { page: 1 },
+      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
+    })
+    const all = data.data || []
+    const mine = all.filter(p => p.user_id === currentUserId)
+    const base = mine.length ? mine : all
+    const enriched = await Promise.all(
+      base.map(async p => ({ ...p, likeCount: await fetchLikeCount(p.id) }))
+    )
+    projects.value = enriched
   } catch (e) {
     console.error(e)
   } finally {
@@ -223,6 +256,16 @@ async function fetchSubscribersCount() {
 function openModal(p) { selectedProject.value = p; fetchLikes(p.id) }
 function closeModal() { selectedProject.value = null }
 
+onMounted(async () => {
+  await fetchUserProfile()
+  await Promise.all([
+    fetchUserProjects(),
+    fetchLikedProjects(),
+    fetchFavoritedProjects(),
+    fetchSubscriptionsCount(),
+    fetchSubscribersCount()
+  ])
+})
 
 function changeTab(tab) { activeTab.value = tab }
 function triggerFileInput() { fileInput.value?.click() }
@@ -252,20 +295,13 @@ function onDrop(e) {
     <div class="profile-header">
       <img class="avatar" :src="flowerImg" alt="Avatar"/>
       <div class="info">
-        <h2 v-if="loadingProfile">
-          <div class="spinner"></div>
-        </h2>
-        <h2 v-else-if="profileUser">
-          {{ profileUser.name }}
-        </h2>
-        <h2 v-else></h2>
+        <h2 v-if="loadingProfile"><div class="spinner"></div></h2>
+        <h2 v-else>{{ userName }}</h2>
         <p>Подписки: <b>{{ subscriptionsCount }}</b> | Подписчики: <b>{{ subscribersCount }}</b></p>
         <p class="views-counter">
           <span>👁️ Просмотры профиля: <b>{{ profileViews }}</b></span>
         </p>
-        <div v-if="isMyProfile" class="buttons">
-          <button class="edit">✏️ Редактировать профиль</button>
-          <button class="setup">⚙️ Настроить профиль <span class="tag">artenify+</span></button></div>
+        <div class="buttons"><button class="edit">✏️ Редактировать профиль</button><button class="setup">⚙️ Настроить профиль <span class="tag">artenify+</span></button></div>
         <p class="reg-date">{{ formattedRegDate }}</p>
       </div>
     </div>
