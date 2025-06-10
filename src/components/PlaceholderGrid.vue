@@ -15,6 +15,72 @@ const ownerPost = ref(null)
 const selectedProject = ref(null)
 const likeCount = ref(0)
 const userLiked = ref(false)
+const userFavorited = ref(false)
+
+async function fetchFavoriteStatus(postId) {
+  try {
+    const res = await api.get('favorites/status', {
+      params: {
+        model: 'post',
+        id:    postId
+      },
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+      }
+    });
+    userFavorited.value = res.data.favorited;
+  } catch (e) {
+    userFavorited.value = false;
+    console.error('Ошибка при получении избранного', e?.response?.data || e);
+  }
+}
+
+
+
+
+async function toggleFavorite() {
+  if (!selectedProject.value) return
+  const postId = selectedProject.value.id
+  const token  = localStorage.getItem('access_token')
+
+  try {
+    if (userFavorited.value) {
+      // Удаляем из избранного через query params
+      await api.delete('favorites/delete', {
+        headers: {
+          'Content-Type':  'application/json',
+          'Accept':        'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        params: {
+          model: 'post',
+          id:    postId
+        }
+      })
+    } else {
+      // Создаём через body
+      await api.post('favorites/create',
+        { favoriteble_type: 'post', favoriteble_id: postId },
+        {
+          headers: {
+            'Content-Type':  'application/json',
+            'Accept':        'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      )
+    }
+
+    // Обновляем статус
+    await fetchFavoriteStatus(postId)
+
+  } catch (e) {
+    console.error('Ошибка toggleFavorite', e?.response?.data || e)
+  }
+}
+
+
+
 
 // Утилита для получения количества лайков
 async function fetchLikeCount(postId) {
@@ -75,7 +141,9 @@ function openModal(project) {
   selectedProject.value = project
   getOwnerPost(project.user_id)
   fetchLikes(project.id)
+  fetchFavoriteStatus(project.id)
 }
+
 function closeModal() {
   selectedProject.value = null
 }
@@ -152,8 +220,6 @@ watch(selectedProject, p => { if (!p) { likeCount.value = 0; userLiked.value = f
 }
 
 .placeholder {
-  width: 350px;
-  height: 300px;
   background-color: #ddd;
   display: flex;
   align-items: center;
@@ -247,5 +313,27 @@ watch(selectedProject, p => { if (!p) { likeCount.value = 0; userLiked.value = f
   border: none;
   border-radius: 8px;
   cursor: pointer;
+}
+.favorite-block {
+  position: absolute;
+  left: 20px;
+  top: 20px;
+}
+
+.favorite-btn {
+  font-size: 24px;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.card-like-block {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  background: rgba(0, 0, 0, 0.4);
+  color: #fff;
+  padding: 4px 8px;
+  font-size: 12px;
 }
 </style>
