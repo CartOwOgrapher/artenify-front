@@ -26,7 +26,6 @@ const bannerImage = ref(null)
 const isDragOver = ref(false)
 
 const currentUser = JSON.parse(localStorage.getItem('user'))
-console.log(localStorage)
 const currentUserId = currentUser?.id
 
 const fileInput = ref(null)
