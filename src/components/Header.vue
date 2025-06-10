@@ -151,7 +151,7 @@ export default {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
+  width: 100vw;
   height: 65px;
   background: white;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -285,7 +285,7 @@ button {
   position: fixed;
   top: 65px;
   left: 0;
-  width: 100%;
+  width: 100;
   height: calc(100vh - 65px);
   background: white;
   transform: translateX(100%);
@@ -315,7 +315,7 @@ button {
 }
 
 .mobile-menu-btn {
-  width: 100%;
+  width: 100vw;
   padding: 12px;
   border-radius: 5px;
   font-size: 16px;

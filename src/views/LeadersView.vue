@@ -178,7 +178,6 @@ import LeadersContent from '@/components/LeadersContent.vue'
 @media (max-width: 1400px) {
   .placeholders-wrapper {
     transform: translateX(-40%) scale(0.9);
-    
   }
 }
 

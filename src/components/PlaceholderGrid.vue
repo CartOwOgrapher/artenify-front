@@ -91,7 +91,7 @@ onUnmounted(() => {
 <style scoped>
 .grid-wrapper {
   position: relative;
-  width: 100%;
+  width: 100vw;
   background: white;
   z-index: 12;
   padding: 20px 0;

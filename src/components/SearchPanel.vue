@@ -31,7 +31,6 @@ const isMobile = computed(() => {
 .search-panel {
   position: sticky;
   margin-top: 910px;
-  top: 65px;
   width: 100vw;
   height: 67px;
   background: white;
