@@ -53,139 +53,68 @@
 
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { defineProps, ref, watch } from 'vue'
 import api from '@/axios.js'
 
-const allProjects = ref([])
-const displayedProjects = ref([])
-const selectedProject = ref(null)
+// Получаем список проектов и событие открытия модалки от родителя
+const props = defineProps({
+  displayedProjects: { type: Array, default: () => [] }
+})
 
+const selectedProject = ref(null)
 const likeCount = ref(0)
 const userLiked = ref(false)
 
-// Получаем количество лайков для одного поста
+// Утилита для получения количества лайков
 async function fetchLikeCount(postId) {
   try {
-    const res = await api.get('likes/count', {
-      params: { model: 'post', id: postId }
-    })
+    const res = await api.get('likes/count', { params: { model: 'post', id: postId } })
     return res.data.count ?? 0
-  } catch (e) {
-    console.error(`Ошибка при получении лайков поста ${postId}`, e)
+  } catch {
     return 0
   }
 }
 
-// Загружаем все проекты и добавляем поле likeCount
-async function fetchProjects() {
-  try {
-    const res = await api.get('posts', { params: { page: 1 } })
-    const projects = res.data.data || []
-
-    // Получаем лайки для каждого проекта
-    const enrichedProjects = await Promise.all(
-      projects.map(async (project) => {
-        const count = await fetchLikeCount(project.id)
-        return { ...project, likeCount: count }
-      })
-    )
-
-    allProjects.value = enrichedProjects
-    displayedProjects.value = shuffleArray(enrichedProjects).slice(0, 12)
-  } catch (e) {
-    console.error('Ошибка при загрузке проектов', e)
-  }
-}
-
-function shuffleArray(arr) {
-  const a = arr.slice()
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[a[i], a[j]] = [a[j], a[i]]
-  }
-  return a
-}
-
-function loadMore() {
-  if (!allProjects.value.length) return
-  displayedProjects.value.push(...shuffleArray(allProjects.value).slice(0, 6))
-}
-
-function handleScroll() {
-  const bottom = document.documentElement.scrollHeight - window.innerHeight
-  if (window.scrollY >= bottom - 100) loadMore()
-}
-
+// Загрузка лайков при смене selectedProject
 async function fetchLikes(postId) {
+  likeCount.value = await fetchLikeCount(postId)
   try {
-    const resCount = await api.get('likes/count', {
-      params: { model: 'post', id: postId }
-    })
-    likeCount.value = resCount.data.count ?? 0
-  } catch (e) {
-    console.error('Ошибка получения количества лайков', e)
-    likeCount.value = 0
-  }
-
-  try {
-    const resUser = await api.get('likes', {
-      params: { model: 'post', id: postId }
-    })
+    const resUser = await api.get('likes', { params: { model: 'post', id: postId } })
     const arr = Array.isArray(resUser.data.like) ? resUser.data.like : []
     userLiked.value = arr.some(item => item.likeble_id === postId)
-  } catch (e) {
-    console.error('Ошибка проверки лайка пользователя', e)
-    if (e.response?.status === 401) {
-      userLiked.value = false
-    }
+  } catch {
+    userLiked.value = false
   }
 }
 
+// Переключение лайка
 async function toggleLike() {
   if (!selectedProject.value) return
   const postId = selectedProject.value.id
-
   try {
     if (userLiked.value) {
-      await api.delete('likes/delete', {
-        params: { model: 'post', id: postId }
-      })
+      await api.delete('likes/delete', { params: { model: 'post', id: postId } })
     } else {
-      await api.post('likes/create', {
-        likeble_type: 'post',
-        likeble_id: postId
-      })
+      await api.post('likes/create', { likeble_type: 'post', likeble_id: postId })
     }
     await fetchLikes(postId)
+    // Обновляем локальный likeCount в props не нужно, родитель может перезагрузить
   } catch (e) {
     console.error('Ошибка toggleLike', e)
   }
 }
 
-watch(selectedProject, project => {
-  if (project) fetchLikes(project.id)
-  else {
-    likeCount.value = 0
-    userLiked.value = false
-  }
-})
-
+// Открытие/закрытие модалки
 function openModal(project) {
   selectedProject.value = project
+  fetchLikes(project.id)
 }
-
 function closeModal() {
   selectedProject.value = null
 }
 
-onMounted(() => {
-  fetchProjects()
-  window.addEventListener('scroll', handleScroll)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('scroll', handleScroll)
-})
+// Слушаем закрытие модалки, сбрасываем состояние
+watch(selectedProject, p => { if (!p) { likeCount.value = 0; userLiked.value = false }} )
 </script>
 
 

@@ -5,10 +5,22 @@ import flowerImg from '@/assets/flower.png'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost/api/v1'
 
+// Данные
 const projects = ref([])
+const likedProjects = ref([])
 const userName = ref("Пользователь")
-const loading = ref(false)
-const error = ref(null)
+const selectedProject = ref(null)
+
+// Лайки в модальном окне
+const likeCount = ref(0)
+const userLiked = ref(false)
+
+// Статусы загрузки
+const loadingProfile = ref(false)
+const loadingProjects = ref(false)
+const loadingLiked = ref(false)
+const loadingModal = ref(false)
+
 const activeTab = ref('Проекты')
 const bannerImage = ref(null)
 const isDragOver = ref(false)
@@ -18,164 +30,192 @@ const currentUserId = currentUser?.id
 
 const fileInput = ref(null)
 
+// Утилита для получения количества лайков
+async function fetchLikeCount(postId) {
+  try {
+    const res = await axios.get(`${API_BASE_URL}/likes/count`, { params: { model: 'post', id: postId } })
+    return res.data.count ?? 0
+  } catch {
+    return 0
+  }
+}
+
+// 1) Профиль
 async function fetchUserProfile() {
+  loadingProfile.value = true
   try {
-    const response = await axios.get(`${API_BASE_URL}/profile/me`, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      }
-    })
-
-    userName.value = response.data.name
-  } catch (err) {
-    console.log(localStorage)
+    const { data } = await axios.get(`${API_BASE_URL}/profile/me`, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
+    userName.value = data.name
+  } catch {
     userName.value = 'Неизвестный пользователь'
-  }
-}
-
-onMounted(async () => {
-  loading.value = true
-  error.value = null
-
-  await fetchUserProfile()
-
-  try {
-    const response = await axios.get(`${API_BASE_URL}/posts`, {
-      params: { page: 1 },
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-        Accept: 'application/json',
-        'Content-Type': 'application/json'
-      }
-    })
-
-    const allPosts = response.data.data || []
-    const userPosts = allPosts.filter(post => post.user_id === currentUserId)
-    projects.value = userPosts.length ? userPosts : allPosts
-
   } finally {
-    loading.value = false
-  }
-})
-
-function changeTab(tabName) {
-  activeTab.value = tabName
-}
-
-function triggerFileInput() {
-  fileInput.value?.click()
-}
-
-function handleBannerUpload(event) {
-  const file = event.target.files[0]
-  if (file) {
-    bannerImage.value = URL.createObjectURL(file)
-    // Здесь можно сделать POST-запрос для загрузки на сервер
+    loadingProfile.value = false
   }
 }
 
-function onDragOver() {
-  isDragOver.value = true
-}
-
-function onDragLeave() {
-  isDragOver.value = false
-}
-
-function onDrop(event) {
-  isDragOver.value = false
-  const file = event.dataTransfer.files[0]
-  if (file && file.type.startsWith('image/')) {
-    bannerImage.value = URL.createObjectURL(file)
-    // Здесь можно сделать POST-запрос для загрузки на сервер
+// 2) Все проекты с лайккаунтом
+async function fetchUserProjects() {
+  loadingProjects.value = true
+  try {
+    const { data } = await axios.get(`${API_BASE_URL}/posts`, { params: { page: 1 }, headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
+    const all = data.data || []
+    const mine = all.filter(p => p.user_id === currentUserId)
+    const base = mine.length ? mine : all
+    const enriched = await Promise.all(
+      base.map(async p => ({ ...p, likeCount: await fetchLikeCount(p.id) }))
+    )
+    projects.value = enriched
+  } catch (e) {
+    console.error(e)
+  } finally {
+    loadingProjects.value = false
   }
 }
+
+// 3) Понравившиеся проекты с лайккаунтом
+async function fetchLikedProjects() {
+  loadingLiked.value = true
+  try {
+    const resLikes = await axios.get(`${API_BASE_URL}/likes`, { params: { model: 'post', id: currentUserId }, headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
+    const likes = Array.isArray(resLikes.data.like) ? resLikes.data.like : []
+    const ids = likes.map(l => l.likeble_id)
+    if (!ids.length) { likedProjects.value = []; return }
+    const arr = await Promise.all(
+      ids.map(id => axios.get(`${API_BASE_URL}/posts/${id}`, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } }).then(r => r.data.data))
+    )
+    const enriched = await Promise.all(arr.map(async p => ({ ...p, likeCount: await fetchLikeCount(p.id) })))
+    likedProjects.value = enriched
+  } catch (e) {
+    console.error('Ошибка при загрузке понравившихся проектов', e)
+    likedProjects.value = []
+  } finally {
+    loadingLiked.value = false
+  }
+}
+
+// 4) Для модального окна лайки и статус
+async function fetchLikes(postId) {
+  loadingModal.value = true
+  likeCount.value = await fetchLikeCount(postId)
+  try {
+    const resUser = await axios.get(`${API_BASE_URL}/likes`, { params: { model: 'post', id: postId }, headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
+    const arr = Array.isArray(resUser.data.like) ? resUser.data.like : []
+    userLiked.value = arr.some(item => item.likeble_id === postId)
+  } catch {
+    userLiked.value = false
+  } finally {
+    loadingModal.value = false
+  }
+}
+
+// 5) Переключатель лайка
+async function toggleLike() {
+  if (!selectedProject.value) return
+  const postId = selectedProject.value.id
+  try {
+    if (userLiked.value) {
+      await axios.delete(`${API_BASE_URL}/likes/delete`, { params: { model: 'post', id: postId }, headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
+    } else {
+      await axios.post(`${API_BASE_URL}/likes/create`, { likeble_type: 'post', likeble_id: postId }, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
+    }
+    await fetchLikes(postId)
+    projects.value = projects.value.map(p => p.id === postId ? { ...p, likeCount: likeCount.value } : p)
+    likedProjects.value = likedProjects.value.map(p => p.id === postId ? { ...p, likeCount: likeCount.value } : p)
+  } catch (e) {
+    console.error('Ошибка toggleLike', e)
+  }
+}
+
+// 6) Модалка
+function openModal(p) { selectedProject.value = p; fetchLikes(p.id) }
+function closeModal() { selectedProject.value = null }
+
+onMounted(async () => { await fetchUserProfile(); await Promise.all([fetchUserProjects(), fetchLikedProjects()]) })
+
+function changeTab(tab) { activeTab.value = tab }
+function triggerFileInput() { fileInput.value?.click() }
+function handleBannerUpload(e) { const f = e.target.files[0]; if (f) bannerImage.value = URL.createObjectURL(f) }
+function onDragOver() { isDragOver.value = true }
+function onDragLeave() { isDragOver.value = false }
+function onDrop(e) { isDragOver.value = false; const f = e.dataTransfer.files[0]; if (f?.type.startsWith('image/')) bannerImage.value = URL.createObjectURL(f) }
 </script>
 
 <template>
   <div class="profile-container">
-    <!-- Баннер с кликом и Drag & Drop -->
-    <div class="profile-banner" :class="{ 'drag-over': isDragOver }"
-      :style="{ backgroundImage: bannerImage ? 'url(' + bannerImage + ')' : '' }" @click="triggerFileInput"
-      @dragover.prevent="onDragOver" @dragleave.prevent="onDragLeave" @drop.prevent="onDrop">
-      <div class="banner-placeholder" v-if="!bannerImage">
-        <span>Добавить изображение баннера</span>
-        <small>Оптимальные размеры 3200 x 410px</small>
-      </div>
-      <input ref="fileInput" type="file" accept="image/*" @change="handleBannerUpload" class="banner-upload" />
+    <!-- Banner -->
+    <div class="profile-banner" :class="{ 'drag-over': isDragOver }" :style="{ backgroundImage: bannerImage ? 'url(' + bannerImage + ')' : '' }" @click="triggerFileInput" @dragover.prevent="onDragOver" @dragleave.prevent="onDragLeave" @drop.prevent="onDrop">
+      <div v-if="!bannerImage" class="banner-placeholder"><span>Добавить изображение баннера</span><small>Оптимальные размеры 3200 x 410px</small></div>
+      <input ref="fileInput" type="file" accept="image/*" @change="handleBannerUpload" class="banner-upload"/>
     </div>
 
-    <!-- Инфо пользователя -->
+    <!-- Header -->
     <div class="profile-header">
-      <img class="avatar" :src="flowerImg" alt="Avatar" />
+      <img class="avatar" :src="flowerImg" alt="Avatar"/>
       <div class="info">
-        <h2>{{ userName }}</h2>
+        <h2 v-if="loadingProfile"><div class="spinner"></div></h2>
+        <h2 v-else>{{ userName }}</h2>
         <p>Подписки: <b>228</b> | Подписчики: <b>1337</b></p>
-        <div class="buttons">
-          <button class="edit">✏️ Редактировать профиль</button>
-          <button class="setup">⚙️ Настроить профиль <span class="tag">artenify+</span></button>
-        </div>
+        <div class="buttons"><button class="edit">✏️ Редактировать профиль</button><button class="setup">⚙️ Настроить профиль <span class="tag">artenify+</span></button></div>
         <p class="reg-date">Дата регистрации: 15 апреля 2022 г.</p>
       </div>
     </div>
 
-    <!-- Вкладки -->
-    <nav class="profile-tabs">
-      <span v-for="tab in ['Проекты', 'Избранное', 'Понравившееся', 'Продвижение+', 'Статистика', 'Черновики']" :key="tab"
-        :class="{ active: activeTab === tab }" @click="changeTab(tab)">
-        {{ tab }}
-      </span>
-    </nav>
+    <!-- Tabs -->
+    <nav class="profile-tabs"><span v-for="tab in ['Проекты','Избранное','Понравившееся','Продвижение+','Статистика','Черновики']" :key="tab" :class="{ active: activeTab === tab }" @click="changeTab(tab)">{{ tab }}</span></nav>
 
-    <!-- Контент вкладок -->
-    <div v-if="activeTab === 'Проекты'" class="projects">
+    <!-- Projects -->
+    <div v-if="activeTab==='Проекты'" class="projects">
       <h3>Проекты</h3>
-      <div class="project-grid">
-        <div v-for="project in projects" :key="project.id" class="project-card">
-          <img v-if="project.images && project.images.length" :src="project.images[0].url" :alt="project.title" />
-          <div class="project-title">{{ project.title }}</div>
+      <div v-if="loadingProjects" class="spinner"/>
+      <div v-else class="project-grid">
+        <div v-for="p in projects" :key="p.id" class="placeholder" @click="openModal(p)">
+          <img v-if="p.images?.length" :src="p.images[0].url" :alt="p.title" class="placeholder-img"/>
+          <div v-else class="placeholder-img">Нет изображения</div>
+          <div class="card-like-block">Лайки: {{ p.likeCount }}</div>
         </div>
       </div>
     </div>
 
-    <div v-if="activeTab === 'Избранное'" class="projects">
-      <h3>Избранное</h3>
-      <div class="tab-content">
-        Пока нет избранного
+    <!-- Избранное -->
+    <div v-if="activeTab==='Избранное'" class="projects"><h3>Избранное</h3><div class="tab-content">Пока нет избранного</div></div>
+
+    <!-- Понравившееся -->
+    <div v-if="activeTab==='Понравившееся'" class="projects">
+      <h3>Понравившиеся проекты</h3>
+      <div v-if="loadingLiked" class="spinner"/>
+      <div v-else>
+        <div v-if="likedProjects.length" class="project-grid">
+          <div v-for="p in likedProjects" :key="p.id" class="placeholder" @click="openModal(p)">
+            <img v-if="p.images?.length" :src="p.images[0].url" :alt="p.title" class="placeholder-img"/>
+            <div v-else class="placeholder-img">Нет изображения</div>
+            <div class="card-like-block">Лайки: {{ p.likeCount }}</div>
+          </div>
+        </div>
+        <div v-else class="tab-content">Пока нет лайков</div>
       </div>
     </div>
 
-    <div v-if="activeTab === 'Понравившееся'" class="projects">
-      <h3>Понравившееся</h3>
-      <div class="tab-content">
-        Пока нет лайков
-      </div>
-    </div>
+    <!-- Остальные -->
+    <div v-if="activeTab==='Продвижение+'" class="projects"><h3>Продвижение+</h3><div class="tab-content">Продвижение в разработке</div></div>
+    <div v-if="activeTab==='Статистика'" class="projects"><h3>Статистика</h3><div class="tab-content">Статистика по проектам будет здесь</div></div>
+    <div v-if="activeTab==='Черновики'" class="projects"><h3>Черновики</h3><div class="tab-content">Черновиков пока нет</div></div>
 
-    <div v-if="activeTab === 'Продвижение+'" class="projects">
-      <h3>Продвижение+</h3>
-      <div class="tab-content">
-        Продвижение в разработке
-      </div>
-    </div>
-
-    <div v-if="activeTab === 'Статистика'" class="projects">
-      <h3>Статистика</h3>
-      <div class="tab-content">
-        Статистика по проектам будет здесь
-      </div>
-    </div>
-
-    <div v-if="activeTab === 'Черновики'" class="projects">
-      <h3>Черновики</h3>
-      <div class="tab-content">
-        Черновиков пока нет
+    <!-- Modal -->
+    <div v-if="selectedProject" class="modal-overlay" @click.self="closeModal">
+      <div class="modal-content">
+        <img v-if="selectedProject.images?.length" :src="selectedProject.images[0].url" :alt="selectedProject.title" class="modal-img"/>
+        <h2 class="modal-title">{{ selectedProject.title }}</h2>
+        <p class="modal-description">{{ selectedProject.description||'Нет описания' }}</p>
+        <div class="like-block">
+          <button class="like-btn" @click="toggleLike"><span v-if="userLiked">❤️</span><span v-else>🤍</span></button>
+          <span class="like-count">{{ likeCount }}</span>
+        </div>
+        <button class="modal-close" @click="closeModal">Закрыть</button>
       </div>
     </div>
   </div>
 </template>
+
 
 <style scoped>
 .profile-container {
@@ -185,6 +225,19 @@ function onDrop(event) {
   right: 0;
   font-family: sans-serif;
   color: #333;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #a32aa1;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 20px auto;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .profile-banner {
@@ -221,7 +274,6 @@ function onDrop(event) {
 
 .banner-upload {
   display: none;
-  /* Скрываем кнопку выбора файла */
 }
 
 .profile-header {
@@ -329,5 +381,108 @@ function onDrop(event) {
   padding: 8px;
   font-weight: bold;
   text-align: center;
+}
+
+/* --- Добавленные стили --- */
+.placeholder {
+  width: 250px;
+  height: 250px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+}
+
+.placeholder-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #eee;
+}
+
+.card-like-block {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  padding: 4px 8px;
+  font-size: 14px;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  position: relative;
+  background: #fff;
+  padding: 30px;
+  border-radius: 12px;
+  max-width: 600px;
+  width: 90%;
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.2);
+  text-align: center;
+}
+
+.modal-img {
+  width: 100%;
+  max-height: 300px;
+  object-fit: cover;
+  margin-bottom: 20px;
+  border-radius: 8px;
+}
+
+.modal-title {
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+.modal-description {
+  font-size: 16px;
+  color: #333;
+  white-space: pre-wrap;
+}
+
+.like-block {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.like-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.like-count {
+  font-size: 16px;
+  color: #333;
+}
+
+.modal-close {
+  margin-top: 40px;
+  padding: 10px 20px;
+  background: #333;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
 }
 </style>

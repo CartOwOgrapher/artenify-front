@@ -1,22 +1,59 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import axios from 'axios'
 import SearchPanel from '@/components/SearchPanel.vue'
 import PlaceholderGrid from '@/components/PlaceholderGrid.vue'
 
-// реактивный объект с фильтрами
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost/api/v1'
+
+// Полный список проектов
+const projects = ref([])
+
+// Фильтры
 const filters = ref({
   search: '',
   sort: ''
 })
 
-// вызывается из SearchPanel.vue
+// Отфильтрованный список
+const filtered = computed(() => {
+  let list = projects.value
+
+  // Поиск по заголовку
+  if (filters.value.search) {
+    const term = filters.value.search.toLowerCase()
+    list = list.filter(p => p.title.toLowerCase().includes(term))
+  }
+
+  // Сортировка (если понадобится)
+  if (filters.value.sort === 'date') {
+    list = [...list].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+  }
+  // доп. ветки sort...
+
+  return list
+})
+
+// Fetch проектов при старте
+onMounted(async () => {
+  try {
+    const { data } = await axios.get(`${API_BASE_URL}/posts`, {
+      params: { page: 1 }
+    })
+    projects.value = data.data || []
+  } catch (e) {
+    console.error('Ошибка загрузки проектов:', e)
+  }
+})
+
+// Хендлер из SearchPanel
 function onFilterChanged({ search, sort }) {
-  filters.value = { search, sort }
+  filters.value.search = search
+  filters.value.sort = sort
 }
 
-// вызывается при клике на иконку поиска по картинке
+// Поиск по картинке (пример)
 function onImageSearch() {
-  // здесь ваша логика «поиск по картинке»
   console.log('Image search triggered')
 }
 </script>
@@ -29,13 +66,14 @@ function onImageSearch() {
 
     <!-- Основной контент -->
     <div>
-      <SearchPanel
-        @filter-changed="onFilterChanged"
-        @image-search="onImageSearch"
-      />
+          <SearchPanel
+      @filter-changed="onFilterChanged"
+      @image-search="onImageSearch"
+    />
 
-      <!-- Передаём filters в PlaceholderGrid -->
-      <PlaceholderGrid :filters="filters" />
+    <PlaceholderGrid
+      :displayedProjects="filtered"
+    />
 
       <!-- Логотип -->
       <div class="logo-container">

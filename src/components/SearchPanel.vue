@@ -1,7 +1,6 @@
 <template>
   <div class="search-panel">
-    <button class="filter-btn">
-      <i class="icon">⚙️</i> Фильтр
+    <button class="filter-btn"> ▼ Фильтр
     </button>
 
     <div class="search-input">
@@ -17,14 +16,18 @@
   </div>
 </template>
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, defineEmits, watch } from 'vue'
 
 const searchQuery = ref('')
+const emit = defineEmits(['filter-changed'])
 const showMobileMenu = ref(false)
 
 // Определяем, мобильное ли устройство
 const isMobile = computed(() => {
   return window.innerWidth <= 724
+})
+watch(searchQuery, val => {
+  emit('filter-changed', { search: val, sort: null })
 })
 </script>
 <style>
