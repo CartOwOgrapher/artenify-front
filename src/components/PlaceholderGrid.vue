@@ -16,9 +16,7 @@
         <div v-else class="placeholder-img">Нет изображения</div>
 
         <!-- Лайки в левом нижнем углу -->
-        <div class="card-like-block">
-          Лайки: {{ project.likeCount || 0 }}
-        </div>
+        <div class="card-like-block">Лайки: {{ project.likeCount || 0 }}</div>
       </div>
     </div>
 
@@ -212,6 +210,7 @@ watch(selectedProject, p => { if (!p) { likeCount.value = 0; userLiked.value = f
 }
 
 .placeholder {
+  position: relative;
   width: 350px; height: 300px;
   background-color: #ddd;
   display: flex; align-items: center; justify-content: center;
@@ -277,4 +276,13 @@ watch(selectedProject, p => { if (!p) { likeCount.value = 0; userLiked.value = f
   cursor: pointer;
 }
 
+.card-like-block {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  background: rgba(0, 0, 0, 0.4);
+  color: #fff;
+  padding: 4px 8px;
+  font-size: 12px;
+}
 </style>
