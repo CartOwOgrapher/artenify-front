@@ -1,73 +1,17 @@
-<template>
-  <div class="grid-wrapper" :style="{ zIndex: selectedProject ? 555 : 12 }">
-    <div class="grid-container">
-      <div
-        v-for="(project, index) in displayedProjects"
-        :key="project.id + '-' + index"
-        class="placeholder"
-        @click="openModal(project)"
-      >
-        <img
-          v-if="project.images?.length"
-          :src="`${api.defaults.imageURL}/${project.images[0].path}`"
-          :alt="project.title"
-          class="placeholder-img"
-        />
-        <div v-else class="placeholder-img">Нет изображения</div>
-
-        <!-- Лайки в левом нижнем углу -->
-        <div class="card-like-block">Лайки: {{ project.likeCount || 0 }}</div>
-      </div>
-    </div>
-
-    <!-- Модальное окно -->
-    <div v-if="selectedProject" class="modal-overlay" @click.self="closeModal">
-      <div class="modal-content">
-        <!-- Кнопка избранного слева -->
-        <div class="favorite-block">
-          <button class="favorite-btn" @click="toggleFavorite">
-            <span v-if="userFavorited">⭐</span>
-            <span v-else>☆</span>
-          </button>
-        </div>
-
-        <img
-          v-if="selectedProject.images?.length"
-          :src="`${api.defaults.imageURL}/${selectedProject.images[0].path}`"
-          :alt="selectedProject.title"
-          class="modal-img"
-        />
-        <h2 class="modal-title">{{ selectedProject.title }}</h2>
-        <p class="modal-description">
-          {{ selectedProject.description || 'Нет описания' }}
-        </p>
-
-        <!-- Блок лайков -->
-        <div class="like-block">
-          <button class="like-btn" @click="toggleLike">
-            <span v-if="userLiked">❤️</span>
-            <span v-else>🤍</span>
-          </button>
-          <span class="like-count">{{ likeCount }}</span>
-        </div>
-
-        <button class="modal-close" @click="closeModal">Закрыть</button>
-      </div>
-    </div>
-
-  </div>
-</template>
-
-
 <script setup>
 import { defineProps, ref, watch } from 'vue'
 import api from '@/axios.js'
+
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 // Получаем список проектов и событие открытия модалки от родителя
 const props = defineProps({
   displayedProjects: { type: Array, default: () => [] }
 })
 
+const ownerPost = ref(null)
 const selectedProject = ref(null)
 const likeCount = ref(0)
 const userLiked = ref(false)
@@ -177,9 +121,25 @@ async function toggleLike() {
   }
 }
 
+async function getOwnerPost(userId) {
+  try {
+    const owner = await api.get(`profile/user/${userId}`)
+    ownerPost.value = owner.data
+  }
+
+  catch (e) {
+    console.error('Ошибка getOwnerPost', e)
+  }
+}
+
+function goToOwnerProfile(id) {
+  router.push(`/profile/${id}`)
+}
+
 // Открытие/закрытие модалки
 function openModal(project) {
   selectedProject.value = project
+  getOwnerPost(project.user_id)
   fetchLikes(project.id)
   fetchFavoriteStatus(project.id)
 }
@@ -189,8 +149,58 @@ function closeModal() {
 }
 
 // Слушаем закрытие модалки, сбрасываем состояние
-watch(selectedProject, p => { if (!p) { likeCount.value = 0; userLiked.value = false }} )
+watch(selectedProject, p => { if (!p) { likeCount.value = 0; userLiked.value = false } })
 </script>
+
+<template>
+  <div class="grid-wrapper" :style="{ zIndex: selectedProject ? 555 : 12 }">
+    <div class="grid-container">
+      <div v-for="(project, index) in displayedProjects" :key="project.id + '-' + index" class="placeholder"
+        @click="openModal(project)">
+        <img v-if="project.images?.length" 
+          :src="`${api.defaults.imageURL}/${project.images[0].path}`"
+          :alt="project.title" class="placeholder-img" />
+        <div v-else class="placeholder-img">Нет изображения</div>
+        <!-- Лайки в левом нижнем углу -->
+        <div class="card-like-block">
+          Лайки: {{ project.likeCount || 0 }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Модальное окно -->
+    <div v-if="selectedProject" class="modal-overlay" @click.self="closeModal">
+      <div class="modal-content">
+        <img v-if="selectedProject.images?.length" :src="`${api.defaults.imageURL}/${selectedProject.images[0].path}`"
+          :alt="selectedProject.title" class="modal-img" />
+        <h2 class="modal-title">{{ selectedProject.title }}</h2>
+        <p class="modal-description">
+          {{ selectedProject.description || 'Нет описания' }}
+        </p>
+        <div>
+          <img @click="goToOwnerProfile(ownerPost.id)" 
+          v-if="ownerPost.avatar != null" 
+          :src="ownerPost.avatar"
+          />
+          <a @click="goToOwnerProfile(ownerPost.id)"
+          v-else>
+            {{ownerPost.name}} 
+          </a>
+        </div>
+        <!-- Блок лайков -->
+        <div class="like-block">
+          <button class="like-btn" @click="toggleLike">
+            <span v-if="userLiked">❤️</span>
+            <span v-else>🤍</span>
+          </button>
+          <span class="like-count">{{ likeCount }}</span>
+        </div>
+
+        <button class="modal-close" @click="closeModal">Закрыть</button>
+      </div>
+    </div>
+  </div>
+</template>
 
 
 <style scoped>
@@ -210,58 +220,99 @@ watch(selectedProject, p => { if (!p) { likeCount.value = 0; userLiked.value = f
 }
 
 .placeholder {
-  position: relative;
-  width: 350px; height: 300px;
   background-color: #ddd;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: 7px; overflow: hidden; cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  overflow: hidden;
+  cursor: pointer;
   transition: transform 0.2s ease;
 }
-.placeholder:hover { transform: scale(1.02) }
 
-.placeholder-img { width: 100%; height: 100%; object-fit: cover; }
+.placeholder:hover {
+  transform: scale(1.02)
+}
+
+.placeholder-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 
 .modal-overlay {
-  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.6);
-  display: flex; justify-content: center; align-items: center;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
   z-index: 1000;
 }
 
 .modal-content {
   position: relative;
-  background: #fff; padding: 30px; border-radius: 12px;
-  max-width: 600px; width: 90%;
-  box-shadow: 0 2px 20px rgba(0,0,0,0.2);
+  background: #fff;
+  padding: 30px;
+  border-radius: 12px;
+  max-width: 600px;
+  width: 90%;
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.2);
   text-align: center;
 }
 
 .modal-img {
-  width: 100%; max-height: 300px;
-  object-fit: cover; margin-bottom: 20px; border-radius: 8px;
+  width: 100%;
+  max-height: 300px;
+  object-fit: cover;
+  margin-bottom: 20px;
+  border-radius: 8px;
 }
 
-.modal-title { font-size: 24px; margin-bottom: 10px; }
+.modal-title {
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
 .modal-description {
-  font-size: 16px; color: #333; white-space: pre-wrap;
+  font-size: 16px;
+  color: #333;
+  white-space: pre-wrap;
 }
 
 .like-block {
-  position: absolute; bottom: 16px; right: 16px;
-  display: flex; align-items: center; gap: 8px;
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .like-btn {
-  background: none; border: none; font-size: 24px;
-  cursor: pointer; padding: 0;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
 }
 
-.like-count { font-size: 16px; color: #333; }
+.like-count {
+  font-size: 16px;
+  color: #333;
+}
 
 .modal-close {
-  margin-top: 40px; padding: 10px 20px;
-  background: #333; color: white; border: none;
-  border-radius: 8px; cursor: pointer;
+  margin-top: 40px;
+  padding: 10px 20px;
+  background: #333;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
 }
 .favorite-block {
   position: absolute;
