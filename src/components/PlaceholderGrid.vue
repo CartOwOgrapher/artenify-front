@@ -25,6 +25,14 @@
     <!-- Модальное окно -->
     <div v-if="selectedProject" class="modal-overlay" @click.self="closeModal">
       <div class="modal-content">
+        <!-- Кнопка избранного слева -->
+        <div class="favorite-block">
+          <button class="favorite-btn" @click="toggleFavorite">
+            <span v-if="userFavorited">⭐</span>
+            <span v-else>☆</span>
+          </button>
+        </div>
+
         <img
           v-if="selectedProject.images?.length"
           :src="`${api.defaults.imageURL}/${selectedProject.images[0].path}`"
@@ -48,6 +56,7 @@
         <button class="modal-close" @click="closeModal">Закрыть</button>
       </div>
     </div>
+
   </div>
 </template>
 
@@ -64,6 +73,72 @@ const props = defineProps({
 const selectedProject = ref(null)
 const likeCount = ref(0)
 const userLiked = ref(false)
+const userFavorited = ref(false)
+
+async function fetchFavoriteStatus(postId) {
+  try {
+    const res = await api.get('favorites/status', {
+      params: {
+        model: 'post',
+        id:    postId
+      },
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+      }
+    });
+    userFavorited.value = res.data.favorited;
+  } catch (e) {
+    userFavorited.value = false;
+    console.error('Ошибка при получении избранного', e?.response?.data || e);
+  }
+}
+
+
+
+
+async function toggleFavorite() {
+  if (!selectedProject.value) return
+  const postId = selectedProject.value.id
+  const token  = localStorage.getItem('access_token')
+
+  try {
+    if (userFavorited.value) {
+      // Удаляем из избранного через query params
+      await api.delete('favorites/delete', {
+        headers: {
+          'Content-Type':  'application/json',
+          'Accept':        'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        params: {
+          model: 'post',
+          id:    postId
+        }
+      })
+    } else {
+      // Создаём через body
+      await api.post('favorites/create',
+        { favoriteble_type: 'post', favoriteble_id: postId },
+        {
+          headers: {
+            'Content-Type':  'application/json',
+            'Accept':        'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      )
+    }
+
+    // Обновляем статус
+    await fetchFavoriteStatus(postId)
+
+  } catch (e) {
+    console.error('Ошибка toggleFavorite', e?.response?.data || e)
+  }
+}
+
+
+
 
 // Утилита для получения количества лайков
 async function fetchLikeCount(postId) {
@@ -108,7 +183,9 @@ async function toggleLike() {
 function openModal(project) {
   selectedProject.value = project
   fetchLikes(project.id)
+  fetchFavoriteStatus(project.id)
 }
+
 function closeModal() {
   selectedProject.value = null
 }
@@ -187,4 +264,17 @@ watch(selectedProject, p => { if (!p) { likeCount.value = 0; userLiked.value = f
   background: #333; color: white; border: none;
   border-radius: 8px; cursor: pointer;
 }
+.favorite-block {
+  position: absolute;
+  left: 20px;
+  top: 20px;
+}
+
+.favorite-btn {
+  font-size: 24px;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
 </style>
