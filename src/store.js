@@ -5,7 +5,7 @@ import api from '@/axios.js'
 const store = createStore({
     state() {
         return {
-            user: null,
+            user: JSON.parse(localStorage.getItem('user')) || null,
             isAuthenticated: !!localStorage.getItem('access_token'),
             errors: {},
             applications: [],
@@ -21,6 +21,7 @@ const store = createStore({
         setUser(state, user) {
             state.user = user;
             state.isAuthenticated = !!user;
+            localStorage.setItem('user', JSON.stringify(user));
         },
         setErrors(state, errors) {
             state.errors = errors;
@@ -28,6 +29,8 @@ const store = createStore({
         clearUser(state) {
             state.user = null;
             state.isAuthenticated = false;
+            localStorage.removeItem('user');
+            localStorage.removeItem('access_token');
         },
         clearErrors(state) {
             state.errors = {};
@@ -43,7 +46,7 @@ const store = createStore({
                 const response = await api.get('/profile/me', { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } });
                 commit('setUser', response.data);
             } catch (error) {
-                commit('clearUser');
+                console.error('Ошибка загрузки пользователя:', error);
             }
         },
         async login({ dispatch, commit }, { email, password }) {

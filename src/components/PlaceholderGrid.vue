@@ -67,7 +67,7 @@ async function getOwnerPost(userId) {
 }
 
 function goToOwnerProfile(id) {
-  router.push(`/profile/user/${id}`)
+  router.push(`/profile/${id}`)
 }
 
 // Открытие/закрытие модалки

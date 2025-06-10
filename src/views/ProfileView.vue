@@ -4,13 +4,19 @@ import api from '@/axios.js'
 import flowerImg from '@/assets/flower.png'
 import { format, parseISO } from 'date-fns' // Добавлены функции для работы с датами
 import { ru } from 'date-fns/locale' // Добавлена русская локализация
+import { useRoute, useRouter } from 'vue-router'
+import { useStore } from 'vuex'
+import { watch } from 'vue'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost/api/v1'
+
+const route = useRoute()
+const router = useRouter()
+const store = useStore()
 
 // Данные
 const projects = ref([])
 const likedProjects = ref([])
-const userName = ref("Пользователь")
 const userCreated = ref()
 const selectedProject = ref(null)
 const subscriptionsCount = ref(0)
@@ -31,8 +37,10 @@ const activeTab = ref('Проекты')
 const bannerImage = ref(null)
 const isDragOver = ref(false)
 
-const currentUser = JSON.parse(localStorage.getItem('user'))
+const currentUser = store.getters.user
 const currentUserId = currentUser?.id
+const profileUser = ref(null)
+const isMyProfile = ref(false)
 
 const fileInput = ref(null)
 
@@ -46,21 +54,30 @@ async function fetchLikeCount(postId) {
   }
 }
 
-
 // 1) Профиль
-async function fetchUserProfile() {
-  loadingProfile.value = true
+async function fetchProfile(userId) {
   try {
-    const { data } = await api.get(`/profile/me`, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
-    userName.value = data.name
-    userCreated.value = data.created_at
-    profileViews.value = data.views;
-  } catch {
-    userName.value = 'Неизвестный пользователь'
+
+    let url = ''
+    if (userId === currentUserId || userId === 'me') {
+      url = '/profile/me'
+      isMyProfile.value = true
+    } else {
+      url = `/profile/user/${userId}`
+      isMyProfile.value = false
+    }
+    const res = await api.get(`${url}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
+    })
+    profileUser.value = res.data;
+  } catch (err) {
+    console.error('Ошибка при загрузке профиля:', err)
+    error.value = 'Не удалось загрузить профиль'
   } finally {
     loadingProfile.value = false
   }
 }
+
 const formattedRegDate = computed(() => {
   if (!userCreated.value) return 'Дата регистрации: неизвестна'
   
@@ -73,17 +90,12 @@ const formattedRegDate = computed(() => {
   }
 })
 // 2) Все проекты с лайккаунтом
-async function fetchUserProjects() {
+async function fetchUserProjects(userId) {
   loadingProjects.value = true
   try {
-    const { data } = await api.get(`/posts`, { params: { page: 1 }, headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
-    const all = data.data || []
-    const mine = all.filter(p => p.user_id === currentUserId)
-    const base = mine.length ? mine : all
-    const enriched = await Promise.all(
-      base.map(async p => ({ ...p, likeCount: await fetchLikeCount(p.id) }))
-    )
-    projects.value = enriched
+    const response = await api.get(`/users/${userId}/posts`, { params: { page: 1 } })
+    projects.value = response.data;
+    projects.value = projects.value.data;
   } catch (e) {
     console.error(e)
   } finally {
@@ -173,7 +185,43 @@ async function toggleLike() {
 function openModal(p) { selectedProject.value = p; fetchLikes(p.id) }
 function closeModal() { selectedProject.value = null }
 
-onMounted(async () => { await fetchUserProfile(); await Promise.all([fetchUserProjects(), fetchLikedProjects(), fetchSubscriptionsCount(), fetchSubscribersCount()]) })
+watch(() => route.params.userId, async (newUserId) => {
+  if (newUserId) {
+    console.log(newUserId);
+    await fetchProfile(newUserId);
+    await Promise.all([
+      fetchUserProjects(newUserId),
+      fetchLikedProjects(),
+      fetchSubscriptionsCount(),
+      fetchSubscribersCount()
+    ]);
+  }
+}, { immediate: true });
+
+onMounted(async () => {
+  let userId = route.params.userId;
+  console.log(userId)
+  if (!userId || userId === 'me') {
+    if (!store.state.user && store.getters.isAuthenticated) {
+      await store.dispatch('getUser');
+    }
+
+    if (!store.state.user) {
+      router.push('/login');
+      return;
+    }
+
+    userId = store.state.user.id;
+  }
+  console.log(userId);
+  await fetchProfile(userId);
+  await Promise.all([
+    fetchUserProjects(userId),
+    fetchLikedProjects(),
+    fetchSubscriptionsCount(),
+    fetchSubscribersCount()
+  ]);
+});
 
 function changeTab(tab) { activeTab.value = tab }
 function triggerFileInput() { fileInput.value?.click() }
@@ -195,13 +243,20 @@ function onDrop(e) { isDragOver.value = false; const f = e.dataTransfer.files[0]
     <div class="profile-header">
       <img class="avatar" :src="flowerImg" alt="Avatar"/>
       <div class="info">
-        <h2 v-if="loadingProfile"><div class="spinner"></div></h2>
-        <h2 v-else>{{ userName }}</h2>
+        <h2 v-if="loadingProfile">
+          <div class="spinner"></div>
+        </h2>
+        <h2 v-else-if="profileUser">
+          {{ profileUser.name }}
+        </h2>
+        <h2 v-else></h2>
         <p>Подписки: <b>{{ subscriptionsCount }}</b> | Подписчики: <b>{{ subscribersCount }}</b></p>
         <p class="views-counter">
           <span>👁️ Просмотры профиля: <b>{{ profileViews }}</b></span>
         </p>
-        <div class="buttons"><button class="edit">✏️ Редактировать профиль</button><button class="setup">⚙️ Настроить профиль <span class="tag">artenify+</span></button></div>
+        <div v-if="isMyProfile" class="buttons">
+          <button class="edit">✏️ Редактировать профиль</button>
+          <button class="setup">⚙️ Настроить профиль <span class="tag">artenify+</span></button></div>
         <p class="reg-date">{{ formattedRegDate }}</p>
       </div>
     </div>

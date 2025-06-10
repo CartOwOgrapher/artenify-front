@@ -25,14 +25,14 @@ const closeMenu = () => {
 // Выход
 const logout = () => {
   store.dispatch('logout')
+  router.push('/login');
 }
 
-// Обновление данных пользователя при монтировании
-onMounted(async () => {
-  if (isAuthenticated.value && !user.value) {
-    await store.dispatch('getUser')
-  }
-})
+const goToMyProfile = (userId) => {
+  if (userId != user.id)
+  { router.push(`/profile/${userId}`) }
+}
+
 </script>
 
 <template>
@@ -71,9 +71,9 @@ onMounted(async () => {
                 d="M12 22c1.1 0 2-.9 2-2h-4a2 2 0 0 0 2 2zm6-6V10c0-3.07-1.63-5.64-4.5-6.32V3a1.5 1.5 0 1 0-3 0v.68C7.63 4.36 6 6.92 6 10v6l-2 2v1h16v-1l-2-2z" />
             </svg>
           </button>
-          <router-link to="/profile" class="avatar-link">
+          <a @click="goToMyProfile(user.id)" class="avatar-link">
             <img :src="user?.avatar || defaultAvatar" alt="Аватар" class="avatar" />
-          </router-link>
+          </a>
           <button class="logout" @click="logout">Выйти</button>
         </template>
         <template v-else>
