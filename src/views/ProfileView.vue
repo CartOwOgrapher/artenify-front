@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import api from '@/axios.js'
 import flowerImg from '@/assets/flower.png'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost/api/v1'
@@ -33,7 +33,7 @@ const fileInput = ref(null)
 // Утилита для получения количества лайков
 async function fetchLikeCount(postId) {
   try {
-    const res = await axios.get(`${API_BASE_URL}/likes/count`, { params: { model: 'post', id: postId } })
+    const res = await api.get(`/likes/count`, { params: { model: 'post', id: postId } })
     return res.data.count ?? 0
   } catch {
     return 0
@@ -44,7 +44,7 @@ async function fetchLikeCount(postId) {
 async function fetchUserProfile() {
   loadingProfile.value = true
   try {
-    const { data } = await axios.get(`${API_BASE_URL}/profile/me`, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
+    const { data } = await api.get(`/profile/me`, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
     userName.value = data.name
   } catch {
     userName.value = 'Неизвестный пользователь'
@@ -57,7 +57,7 @@ async function fetchUserProfile() {
 async function fetchUserProjects() {
   loadingProjects.value = true
   try {
-    const { data } = await axios.get(`${API_BASE_URL}/posts`, { params: { page: 1 }, headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
+    const { data } = await api.get(`/posts`, { params: { page: 1 }, headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
     const all = data.data || []
     const mine = all.filter(p => p.user_id === currentUserId)
     const base = mine.length ? mine : all
@@ -76,12 +76,12 @@ async function fetchUserProjects() {
 async function fetchLikedProjects() {
   loadingLiked.value = true
   try {
-    const resLikes = await axios.get(`${API_BASE_URL}/likes`, { params: { model: 'post', id: currentUserId }, headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
+    const resLikes = await api.get(`/likes`, { params: { model: 'post', id: currentUserId }, headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
     const likes = Array.isArray(resLikes.data.like) ? resLikes.data.like : []
     const ids = likes.map(l => l.likeble_id)
     if (!ids.length) { likedProjects.value = []; return }
     const arr = await Promise.all(
-      ids.map(id => axios.get(`${API_BASE_URL}/posts/${id}`, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } }).then(r => r.data.data))
+      ids.map(id => api.get(`/posts/${id}`, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } }).then(r => r.data.data))
     )
     const enriched = await Promise.all(arr.map(async p => ({ ...p, likeCount: await fetchLikeCount(p.id) })))
     likedProjects.value = enriched
@@ -98,7 +98,7 @@ async function fetchLikes(postId) {
   loadingModal.value = true
   likeCount.value = await fetchLikeCount(postId)
   try {
-    const resUser = await axios.get(`${API_BASE_URL}/likes`, { params: { model: 'post', id: postId }, headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
+    const resUser = await api.get(`/likes`, { params: { model: 'post', id: postId }, headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
     const arr = Array.isArray(resUser.data.like) ? resUser.data.like : []
     userLiked.value = arr.some(item => item.likeble_id === postId)
   } catch {
@@ -114,9 +114,9 @@ async function toggleLike() {
   const postId = selectedProject.value.id
   try {
     if (userLiked.value) {
-      await axios.delete(`${API_BASE_URL}/likes/delete`, { params: { model: 'post', id: postId }, headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
+      await api.delete(`/likes/delete`, { params: { model: 'post', id: postId }, headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
     } else {
-      await axios.post(`${API_BASE_URL}/likes/create`, { likeble_type: 'post', likeble_id: postId }, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
+      await api.post(`/likes/create`, { likeble_type: 'post', likeble_id: postId }, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
     }
     await fetchLikes(postId)
     projects.value = projects.value.map(p => p.id === postId ? { ...p, likeCount: likeCount.value } : p)
@@ -169,7 +169,9 @@ function onDrop(e) { isDragOver.value = false; const f = e.dataTransfer.files[0]
       <div v-if="loadingProjects" class="spinner"/>
       <div v-else class="project-grid">
         <div v-for="p in projects" :key="p.id" class="placeholder" @click="openModal(p)">
-          <img v-if="p.images?.length" :src="p.images[0].url" :alt="p.title" class="placeholder-img"/>
+          <img v-if="p.images?.length" 
+            :src="`${api.defaults.imageURL}/${p.images[0].path}`" 
+            :alt="p.title" class="placeholder-img"/>
           <div v-else class="placeholder-img">Нет изображения</div>
           <div class="card-like-block">Лайки: {{ p.likeCount }}</div>
         </div>
@@ -186,7 +188,9 @@ function onDrop(e) { isDragOver.value = false; const f = e.dataTransfer.files[0]
       <div v-else>
         <div v-if="likedProjects.length" class="project-grid">
           <div v-for="p in likedProjects" :key="p.id" class="placeholder" @click="openModal(p)">
-            <img v-if="p.images?.length" :src="p.images[0].url" :alt="p.title" class="placeholder-img"/>
+            <img v-if="p.images?.length" 
+              :src="`${api.defaults.imageURL}/${p.images[0].path}`" 
+              :alt="p.title" class="placeholder-img"/>
             <div v-else class="placeholder-img">Нет изображения</div>
             <div class="card-like-block">Лайки: {{ p.likeCount }}</div>
           </div>
@@ -203,7 +207,9 @@ function onDrop(e) { isDragOver.value = false; const f = e.dataTransfer.files[0]
     <!-- Modal -->
     <div v-if="selectedProject" class="modal-overlay" @click.self="closeModal">
       <div class="modal-content">
-        <img v-if="selectedProject.images?.length" :src="selectedProject.images[0].url" :alt="selectedProject.title" class="modal-img"/>
+        <img v-if="selectedProject.images?.length" 
+          :src="`${api.defaults.imageURL}/${selectedProject.images[0].path}`" 
+          :alt="selectedProject.title" class="modal-img"/>
         <h2 class="modal-title">{{ selectedProject.title }}</h2>
         <p class="modal-description">{{ selectedProject.description||'Нет описания' }}</p>
         <div class="like-block">
