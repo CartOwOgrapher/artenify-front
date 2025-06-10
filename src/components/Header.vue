@@ -181,7 +181,7 @@ export default {
 }
 
 .logo img {
-  height: 40px;
+  height: 70px;
   width: auto;
   object-fit: contain;
 }
@@ -361,7 +361,7 @@ button {
   }
   
   .logo img {
-    height: 35px;
+    height: 60px;
   }
   
   .mobile-menu {
