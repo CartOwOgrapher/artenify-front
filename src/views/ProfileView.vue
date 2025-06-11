@@ -1,50 +1,55 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue' // Добавлен computed
-import api from '@/axios.js'
-import flowerImg from '@/assets/flower.png'
-import { format, parseISO } from 'date-fns' // Добавлены функции для работы с датами
-import { ru } from 'date-fns/locale' // Добавлена русская локализация
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useStore } from 'vuex'
-import { watch } from 'vue'
+import api from '@/axios.js'
+import flowerImg from '@/assets/flower.png'
+import { format, parseISO } from 'date-fns'
+import { ru } from 'date-fns/locale'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost/api/v1'
 
+// Router & Store
 const route = useRoute()
 const router = useRouter()
 const store = useStore()
 
-// Данные
+// Reactive state
 const projects = ref([])
 const likedProjects = ref([])
-const userCreated = ref()
-const selectedProject = ref(null)
+const favoritedProjects = ref([])
+
+const userName = ref('')
+const userCreated = ref(null)
+const profileUser = ref(null)
+const profileViews = ref(0)
+
 const subscriptionsCount = ref(0)
 const subscribersCount = ref(0)
-const profileViews = ref(0);
 
-// Лайки в модальном окне
+const selectedProject = ref(null)
 const likeCount = ref(0)
 const userLiked = ref(false)
+const userFavorited = ref(false)
 
-// Статусы загрузки
 const loadingProfile = ref(false)
 const loadingProjects = ref(false)
 const loadingLiked = ref(false)
 const loadingModal = ref(false)
 
 const activeTab = ref('Проекты')
+
+// Banner upload state
 const bannerImage = ref(null)
 const isDragOver = ref(false)
-
-const currentUser = store.getters.user
-const currentUserId = currentUser?.id
-const profileUser = ref(null)
-const isMyProfile = ref(false)
-
 const fileInput = ref(null)
 
-// Утилита для получения количества лайков
+// Current user
+const currentUser = store.getters.user || JSON.parse(localStorage.getItem('user'))
+const currentUserId = currentUser?.id
+const isMyProfile = ref(false)
+
+// Utils
 async function fetchLikeCount(postId) {
   try {
     const res = await api.get(`/likes/count`, { params: { model: 'post', id: postId } })
@@ -54,25 +59,20 @@ async function fetchLikeCount(postId) {
   }
 }
 
-// 1) Профиль
+// 1) Profile info
 async function fetchProfile(userId) {
+  loadingProfile.value = true
   try {
-
-    let url = ''
-    if (userId === currentUserId || userId === 'me') {
-      url = '/profile/me'
-      isMyProfile.value = true
-    } else {
-      url = `/profile/user/${userId}`
-      isMyProfile.value = false
-    }
-    const res = await api.get(`${url}`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
-    })
-    profileUser.value = res.data;
+    let url = userId === currentUserId || userId === 'me' ? '/profile/me' : `/profile/user/${userId}`
+    isMyProfile.value = (url === '/profile/me')
+    const res = await api.get(url, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
+    profileUser.value = res.data
+    userName.value = res.data.name
+    userCreated.value = res.data.created_at || res.data.createdAt || res.data.createdAt
+    profileViews.value = res.data.views ?? 0
   } catch (err) {
     console.error('Ошибка при загрузке профиля:', err)
-    error.value = 'Не удалось загрузить профиль'
+    userName.value = 'Не удалось загрузить профиль'
   } finally {
     loadingProfile.value = false
   }
@@ -80,148 +80,151 @@ async function fetchProfile(userId) {
 
 const formattedRegDate = computed(() => {
   if (!userCreated.value) return 'Дата регистрации: неизвестна'
-  
   try {
     const date = parseISO(userCreated.value)
     return `Дата регистрации: ${format(date, 'd MMMM yyyy г.', { locale: ru })}`
-  } catch (e) {
-    console.error('Ошибка форматирования даты', e)
+  } catch {
     return 'Дата регистрации: неизвестна'
   }
 })
-// 2) Все проекты с лайккаунтом
+
+// 2) Fetch user projects
 async function fetchUserProjects(userId) {
   loadingProjects.value = true
   try {
-    const response = await api.get(`/users/${userId}/posts`, { params: { page: 1 } })
-    projects.value = response.data;
-    projects.value = projects.value.data;
-  } catch (e) {
-    console.error(e)
+    const res = await api.get(`/users/${userId}/posts`, { params: { page: 1 } })
+    let list = res.data.data || []
+    // enrich with likes
+    projects.value = await Promise.all(list.map(async p => ({ ...p, likeCount: await fetchLikeCount(p.id) })))
+  } catch (err) {
+    console.error(err)
   } finally {
     loadingProjects.value = false
   }
 }
 
-// 3) Понравившиеся проекты с лайккаунтом
+// 3) Fetch liked projects
 async function fetchLikedProjects() {
   loadingLiked.value = true
   try {
-    const resLikes = await api.get(`/likes`, { params: { model: 'post', id: currentUserId }, headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
-    const likes = Array.isArray(resLikes.data.like) ? resLikes.data.like : []
+    const res = await api.get('/likes', { params: { model: 'post', id: currentUserId }, headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
+    const likes = Array.isArray(res.data.like) ? res.data.like : []
     const ids = likes.map(l => l.likeble_id)
     if (!ids.length) { likedProjects.value = []; return }
-    const arr = await Promise.all(
-      ids.map(id => api.get(`/posts/${id}`, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } }).then(r => r.data.data))
-    )
-    const enriched = await Promise.all(arr.map(async p => ({ ...p, likeCount: await fetchLikeCount(p.id) })))
-    likedProjects.value = enriched
-  } catch (e) {
-    console.error('Ошибка при загрузке понравившихся проектов', e)
+    const arr = await Promise.all(ids.map(id => api.get(`/posts/${id}`, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } }).then(r => r.data.data)))
+    likedProjects.value = await Promise.all(arr.map(async p => ({ ...p, likeCount: await fetchLikeCount(p.id) })))
+  } catch (err) {
+    console.error('Ошибка при загрузке понравившихся проектов', err)
     likedProjects.value = []
   } finally {
     loadingLiked.value = false
   }
 }
 
-// 4) Для модального окна лайки и статус
-async function fetchLikes(postId) {
-  loadingModal.value = true
-  likeCount.value = await fetchLikeCount(postId)
+// 4) Fetch favorited projects
+async function fetchFavoritedProjects() {
   try {
-    const resUser = await api.get(`/likes`, { params: { model: 'post', id: postId }, headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
-    const arr = Array.isArray(resUser.data.like) ? resUser.data.like : []
-    userLiked.value = arr.some(item => item.likeble_id === postId)
+    const res = await api.get('/favorites', { params: { model: 'post', id: currentUserId }, headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
+    const favs = Array.isArray(res.data.favorite) ? res.data.favorite : []
+    const ids = favs.map(f => f.favoriteble_id)
+    if (!ids.length) { favoritedProjects.value = []; return }
+    const posts = await Promise.all(ids.map(id => api.get(`/posts/${id}`, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } }).then(r => r.data.data)))
+    favoritedProjects.value = await Promise.all(posts.map(async p => ({ ...p, likeCount: await fetchLikeCount(p.id) })))
+  } catch (err) {
+    console.error('Ошибка при загрузке избранного', err)
+    favoritedProjects.value = []
+  }
+}
+
+// 5) Favorite status
+async function fetchFavoriteStatus(postId) {
+  try {
+    const res = await api.get('/favorites', { params: { model: 'post', id: postId }, headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
+    const arr = Array.isArray(res.data.favorite) ? res.data.favorite : []
+    userFavorited.value = arr.some(item => item.favoriteble_id === postId)
   } catch {
-    userLiked.value = false
-  } finally {
-    loadingModal.value = false
+    userFavorited.value = false
   }
 }
 
-async function fetchSubscriptionsCount() {
-  try {
-    const res = await api.get('/subscriptions/subscriptions', { 
-      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } 
-    })
-    subscriptionsCount.value = res.data.subscribtions?.length || 0
-  } catch (error) {
-    console.error('Ошибка при получении подписок:', error)
-    subscriptionsCount.value = 0
-  }
-}
-
-async function fetchSubscribersCount() {
-  try {
-    const res = await api.get('/subscriptions/subscribers', { 
-      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } 
-    })
-    subscribersCount.value = res.data.subscribers?.length || 0
-  } catch (error) {
-    console.error('Ошибка при получении подписчиков:', error)
-    subscribersCount.value = 0
-  }
-}
-
-// 5) Переключатель лайка
+// 6) Toggle like
 async function toggleLike() {
   if (!selectedProject.value) return
   const postId = selectedProject.value.id
   try {
-    if (userLiked.value) {
-      await api.delete(`/likes/delete`, { params: { model: 'post', id: postId }, headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
-    } else {
-      await api.post(`/likes/create`, { likeble_type: 'post', likeble_id: postId }, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
-    }
-    await fetchLikes(postId)
-    projects.value = projects.value.map(p => p.id === postId ? { ...p, likeCount: likeCount.value } : p)
-    likedProjects.value = likedProjects.value.map(p => p.id === postId ? { ...p, likeCount: likeCount.value } : p)
-  } catch (e) {
-    console.error('Ошибка toggleLike', e)
+    const headers = { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
+    if (userLiked.value) await api.delete('/likes/delete', { params: { model: 'post', id: postId }, headers })
+    else await api.post('/likes/create', { likeble_type: 'post', likeble_id: postId }, { headers })
+    await fetchProjectModalData(postId)
+  } catch (err) {
+    console.error(err)
   }
 }
 
-// 6) Модалка
-function openModal(p) { selectedProject.value = p; fetchLikes(p.id) }
+// 7) Toggle favorite
+async function toggleFavorite() {
+  if (!selectedProject.value) return
+  const postId = selectedProject.value.id
+  try {
+    const headers = { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
+    if (userFavorited.value) await api.delete('/favorites/delete', { params: { model: 'post', id: postId }, headers })
+    else await api.post('/favorites/create', { favoriteble_type: 'post', favoriteble_id: postId }, { headers })
+    await fetchProjectModalData(postId)
+    await fetchFavoritedProjects()
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+// Combined fetch for modal
+async function fetchProjectModalData(postId) {
+  loadingModal.value = true
+  likeCount.value = await fetchLikeCount(postId)
+  await Promise.all([fetchFavoriteStatus(postId), (async () => {
+    try {
+      const res = await api.get('/likes', { params: { model: 'post', id: postId }, headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
+      const arr = Array.isArray(res.data.like) ? res.data.like : []
+      userLiked.value = arr.some(item => item.likeble_id === postId)
+    } catch {
+      userLiked.value = false
+    }
+  })()])
+  loadingModal.value = false
+}
+
+// Subscriptions
+async function fetchSubscriptionsCount() {
+  try {
+    const res = await api.get('/subscriptions/subscriptions', { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
+    subscriptionsCount.value = res.data.subscribtions?.length || 0
+  } catch { subscriptionsCount.value = 0 }
+}
+async function fetchSubscribersCount() {
+  try {
+    const res = await api.get('/subscriptions/subscribers', { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
+    subscribersCount.value = res.data.subscribers?.length || 0
+  } catch { subscribersCount.value = 0 }
+}
+
+// Modal open/close
+function openModal(p) { selectedProject.value = p; fetchProjectModalData(p.id) }
 function closeModal() { selectedProject.value = null }
 
-watch(() => route.params.userId, async (newUserId) => {
-  if (newUserId) {
-    console.log(newUserId);
-    await fetchProfile(newUserId);
-    await Promise.all([
-      fetchUserProjects(newUserId),
-      fetchLikedProjects(),
-      fetchSubscriptionsCount(),
-      fetchSubscribersCount()
-    ]);
-  }
-}, { immediate: true });
+// Watch route param for user change
+watch(() => route.params.userId, async (newId) => {
+  const id = newId || 'me'
+  await fetchProfile(id)
+  await Promise.all([fetchUserProjects(id), fetchLikedProjects(), fetchFavoritedProjects(), fetchSubscriptionsCount(), fetchSubscribersCount()])
+}, { immediate: true })
 
+// Initial mount
 onMounted(async () => {
-  let userId = route.params.userId;
-  console.log(userId)
-  if (!userId || userId === 'me') {
-    if (!store.state.user && store.getters.isAuthenticated) {
-      await store.dispatch('getUser');
-    }
-
-    if (!store.state.user) {
-      router.push('/login');
-      return;
-    }
-
-    userId = store.state.user.id;
-  }
-  console.log(userId);
-  await fetchProfile(userId);
-  await Promise.all([
-    fetchUserProjects(userId),
-    fetchLikedProjects(),
-    fetchSubscriptionsCount(),
-    fetchSubscribersCount()
-  ]);
-});
+  let userId = route.params.userId || 'me'
+  if (!store.getters.isAuthenticated) { router.push('/login'); return }
+  if (!route.params.userId) userId = currentUserId
+  await fetchProfile(userId)
+  await Promise.all([fetchUserProjects(userId), fetchLikedProjects(), fetchFavoritedProjects(), fetchSubscriptionsCount(), fetchSubscribersCount()])
+})
 
 function changeTab(tab) { activeTab.value = tab }
 function triggerFileInput() { fileInput.value?.click() }
@@ -229,6 +232,15 @@ function handleBannerUpload(e) { const f = e.target.files[0]; if (f) bannerImage
 function onDragOver() { isDragOver.value = true }
 function onDragLeave() { isDragOver.value = false }
 function onDrop(e) { isDragOver.value = false; const f = e.dataTransfer.files[0]; if (f?.type.startsWith('image/')) bannerImage.value = URL.createObjectURL(f) }
+
+const tabs = computed(() => {
+  const publicTabs = ['Проекты', 'Статистика']
+  const privateTabs = ['Избранное', 'Понравившееся', 'Продвижение+', 'Черновики']
+  return isMyProfile.value ? [...publicTabs, ...privateTabs] : publicTabs
+})
+
+
+
 </script>
 
 <template>
@@ -243,26 +255,27 @@ function onDrop(e) { isDragOver.value = false; const f = e.dataTransfer.files[0]
     <div class="profile-header">
       <img class="avatar" :src="flowerImg" alt="Avatar"/>
       <div class="info">
-        <h2 v-if="loadingProfile">
-          <div class="spinner"></div>
-        </h2>
-        <h2 v-else-if="profileUser">
-          {{ profileUser.name }}
-        </h2>
-        <h2 v-else></h2>
+        <h2 v-if="loadingProfile"><div class="spinner"></div></h2>
+        <h2 v-else>{{ userName }}</h2>
         <p>Подписки: <b>{{ subscriptionsCount }}</b> | Подписчики: <b>{{ subscribersCount }}</b></p>
-        <p class="views-counter">
-          <span>👁️ Просмотры профиля: <b>{{ profileViews }}</b></span>
-        </p>
-        <div v-if="isMyProfile" class="buttons">
-          <button class="edit">✏️ Редактировать профиль</button>
-          <button class="setup">⚙️ Настроить профиль <span class="tag">artenify+</span></button></div>
+        <p class="views-counter"><span>👁️ Просмотры профиля: <b>{{ profileViews }}</b></span></p>
+        <div v-if="isMyProfile" class="buttons"><button class="edit">✏️ Редактировать профиль</button><button class="setup">⚙️ Настроить профиль <span class="tag">artenify+</span></button></div>
         <p class="reg-date">{{ formattedRegDate }}</p>
       </div>
     </div>
 
     <!-- Tabs -->
-    <nav class="profile-tabs"><span v-for="tab in ['Проекты','Избранное','Понравившееся','Продвижение+','Статистика','Черновики']" :key="tab" :class="{ active: activeTab === tab }" @click="changeTab(tab)">{{ tab }}</span></nav>
+    <nav class="profile-tabs">
+      <span
+        v-for="tab in tabs"
+        :key="tab"
+        :class="{ active: activeTab === tab }"
+        @click="changeTab(tab)"
+      >
+        {{ tab }}
+      </span>
+    </nav>
+
 
     <!-- Projects -->
     <div v-if="activeTab==='Проекты'" class="projects">
@@ -270,28 +283,34 @@ function onDrop(e) { isDragOver.value = false; const f = e.dataTransfer.files[0]
       <div v-if="loadingProjects" class="spinner"/>
       <div v-else class="project-grid">
         <div v-for="p in projects" :key="p.id" class="placeholder" @click="openModal(p)">
-          <img v-if="p.images?.length" 
-            :src="`${api.defaults.imageURL}/${p.images[0].path}`" 
-            :alt="p.title" class="placeholder-img"/>
+          <img v-if="p.images?.length" :src="`${api.defaults.imageURL}/${p.images[0].path}`" :alt="p.title" class="placeholder-img"/>
           <div v-else class="placeholder-img">Нет изображения</div>
           <div class="card-like-block">Лайки: {{ p.likeCount }}</div>
         </div>
       </div>
     </div>
 
-    <!-- Избранное -->
-    <div v-if="activeTab==='Избранное'" class="projects"><h3>Избранное</h3><div class="tab-content">Пока нет избранного</div></div>
+    <!-- Favorites -->
+    <div v-if="activeTab==='Избранное'" class="projects">
+      <h3>Избранное</h3>
+      <div v-if="favoritedProjects.length" class="project-grid">
+        <div v-for="p in favoritedProjects" :key="p.id" class="placeholder" @click="openModal(p)">
+          <img v-if="p.images?.length" :src="`${api.defaults.imageURL}/${p.images[0].path}`" :alt="p.title" class="placeholder-img"/>
+          <div v-else class="placeholder-img">Нет изображения</div>
+          <div class="card-like-block">Лайки: {{ p.likeCount }}</div>
+        </div>
+      </div>
+      <div v-else class="tab-content">Пока нет избранного</div>
+    </div>
 
-    <!-- Понравившееся -->
+    <!-- Liked -->
     <div v-if="activeTab==='Понравившееся'" class="projects">
       <h3>Понравившиеся проекты</h3>
       <div v-if="loadingLiked" class="spinner"/>
       <div v-else>
         <div v-if="likedProjects.length" class="project-grid">
           <div v-for="p in likedProjects" :key="p.id" class="placeholder" @click="openModal(p)">
-            <img v-if="p.images?.length" 
-              :src="`${api.defaults.imageURL}/${p.images[0].path}`" 
-              :alt="p.title" class="placeholder-img"/>
+            <img v-if="p.images?.length" :src="`${api.defaults.imageURL}/${p.images[0].path}`" :alt="p.title" class="placeholder-img"/>
             <div v-else class="placeholder-img">Нет изображения</div>
             <div class="card-like-block">Лайки: {{ p.likeCount }}</div>
           </div>
@@ -300,7 +319,7 @@ function onDrop(e) { isDragOver.value = false; const f = e.dataTransfer.files[0]
       </div>
     </div>
 
-    <!-- Остальные -->
+    <!-- Others Tabs... -->
     <div v-if="activeTab==='Продвижение+'" class="projects"><h3>Продвижение+</h3><div class="tab-content">Продвижение в разработке</div></div>
     <div v-if="activeTab==='Статистика'" class="projects"><h3>Статистика</h3><div class="tab-content">Статистика по проектам будет здесь</div></div>
     <div v-if="activeTab==='Черновики'" class="projects"><h3>Черновики</h3><div class="tab-content">Черновиков пока нет</div></div>
@@ -308,11 +327,12 @@ function onDrop(e) { isDragOver.value = false; const f = e.dataTransfer.files[0]
     <!-- Modal -->
     <div v-if="selectedProject" class="modal-overlay" @click.self="closeModal">
       <div class="modal-content">
-        <img v-if="selectedProject.images?.length" 
-          :src="`${api.defaults.imageURL}/${selectedProject.images[0].path}`" 
-          :alt="selectedProject.title" class="modal-img"/>
+        <button class="favorite-btn-top-left" @click="toggleFavorite">
+          <span v-if="userFavorited">⭐</span><span v-else>☆</span>
+        </button>
+        <img v-if="selectedProject.images?.length" :src="`${api.defaults.imageURL}/${selectedProject.images[0].path}`" :alt="selectedProject.title" class="modal-img"/>
         <h2 class="modal-title">{{ selectedProject.title }}</h2>
-        <p class="modal-description">{{ selectedProject.description||'Нет описания' }}</p>
+        <p class="modal-description">{{ selectedProject.description || 'Нет описания' }}</p>
         <div class="like-block">
           <button class="like-btn" @click="toggleLike"><span v-if="userLiked">❤️</span><span v-else>🤍</span></button>
           <span class="like-count">{{ likeCount }}</span>
@@ -592,4 +612,18 @@ function onDrop(e) { isDragOver.value = false; const f = e.dataTransfer.files[0]
   border-radius: 8px;
   cursor: pointer;
 }
+.favorite-btn-top-left {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  z-index: 10;
+}
+.favorite-btn-top-left:hover {
+  transform: scale(1.1);
+}
+
 </style>

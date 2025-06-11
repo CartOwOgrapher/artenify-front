@@ -115,6 +115,7 @@ const goToMyProfile = (userId) => {
 </template>
 
 <style scoped>
+/* Базовые стили хедера */
 .header {
   position: fixed;
   top: 0;
@@ -144,9 +145,14 @@ const goToMyProfile = (userId) => {
   gap: 20px;
 }
 
+.logo {
+  cursor: pointer;
+}
+
 .logo img {
-  height: 35px;
+  height: 100px;
   width: auto;
+  object-fit: contain;
 }
 
 .nav {
@@ -188,6 +194,7 @@ button {
   color: white;
 }
 
+/* Стили для авторизованного состояния */
 .publish-project {
   background: #ff69b4;
   color: white;
@@ -220,6 +227,7 @@ button {
   margin-left: 10px;
 }
 
+/* Бургер-кнопка */
 .burger-btn {
   display: none;
   flex-direction: column;
@@ -229,6 +237,7 @@ button {
   background: none;
   border: none;
   cursor: pointer;
+  padding: 0;
   z-index: 1001;
 }
 
@@ -240,6 +249,7 @@ button {
   transition: all 0.3s ease;
 }
 
+/* Мобильное меню */
 .mobile-menu {
   position: fixed;
   top: 65px;
@@ -285,6 +295,11 @@ button {
   color: #630D46;
 }
 
+.mobile-menu-btn.login {
+  color: #630D46;
+  border: 1px solid #630D46;
+}
+
 .mobile-menu-btn.register {
   background: #ff69b4;
   color: white;
@@ -297,34 +312,35 @@ button {
 
 /* Адаптация */
 @media (max-width: 620px) {
-
   .nav,
-  .auth-buttons>*:not(.burger-btn) {
+  .auth-buttons > *{
     display: none;
   }
-
+  
   .burger-btn {
     display: flex;
   }
+  
 }
 
 @media (max-width: 480px) {
   .header {
-    height: 60px;
+    height: 65px;
     padding: 0 10px;
   }
-
+  
   .logo img {
     height: 35px;
   }
-
+  
   .mobile-menu {
     top: 60px;
     height: calc(100vh - 60px);
   }
-
+  
   button {
     padding: 8px 12px;
     font-size: 16px;
   }
-}</style>
+}
+</style>
