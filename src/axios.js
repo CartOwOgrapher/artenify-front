@@ -1,20 +1,18 @@
-// src/axios.js
 import axios from 'axios';
+import { useStore } from 'vuex'; // Для доступа к хранилищу
+import router from '@/router';   // Для навигации
 
 const api = axios.create({
-  baseURL: 'http://localhost/api/v1', // путь к Laravel API
-  withCredentials: true,              // для работы с refresh_token cookie
+  baseURL: 'http://localhost/api/v1',
+  withCredentials: true,
 });
 
-// для формирования ссылок на картинки в компонентах
 api.defaults.imageURL = 'http://localhost';
 
-// Добавляем access_token ко всем запросам
+// Перехватчик запросов (добавляет токен)
 api.interceptors.request.use(config => {
   const token = localStorage.getItem('access_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 

@@ -50,6 +50,16 @@ const store = createStore({
                 console.error('Ошибка загрузки пользователя:', error);
             }
         },
+        async refreshToken({ commit }) {
+            try {
+                const response = await api.post('/auth/refresh-token');
+                localStorage.setItem('access_token', response.data.token);
+                return response.data.token;
+            } catch (error) {
+                commit('clearUser');
+                throw error;
+            }
+        },
         async login({ dispatch, commit }, { email, password }) {
             commit('clearErrors');
             try {

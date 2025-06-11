@@ -9,11 +9,10 @@ import router from './router'
 const app = createApp(App)
 
 app.use(store)
+app.use(router)
 
 if (store.getters.isAuthenticated) {
     store.dispatch('getUser')
 }
-
-app.use(router)
 
 app.mount('#app')
