@@ -1,3 +1,183 @@
+<script setup>
+import { ref, computed, onMounted } from 'vue';
+import {useStore } from 'vuex'
+import api from '@/axios.js';
+
+const store = useStore()
+
+// --- Reactive State ---
+const form = ref({
+  title: '',
+  content: '',
+  images: [],
+  tools: '',
+  visibility: 'public',
+  draft: false,
+  tags: ''
+});
+
+const successMessage = ref('');
+const errorMessages = ref([]);
+const showModal = ref(false);
+const isTagModalOpen = ref(false);
+const tagSearchQuery = ref('');
+const searchResults = ref([]);
+const canCreateTag = ref(false);
+const selectedTags = ref([]);
+
+// --- Computed ---
+const canContinue = computed(() => {
+  return (
+    form.value.title.trim().length > 0 ||
+    form.value.content.trim().length > 0 ||
+    form.value.images.length > 0
+  );
+});
+
+// --- Methods ---
+
+function handleImageChange(e) {
+  const files = Array.from(e.target.files);
+  form.value.images = files.map(file => {
+    file.preview = URL.createObjectURL(file);
+    return file;
+  });
+}
+
+async function handleSubmit() {
+  errorMessages.value = [];
+  successMessage.value = '';
+  showModal.value = false;
+
+  const token = localStorage.getItem('access_token');
+  if (!token) {
+    errorMessages.value.push('Необходима авторизация.');
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('title', form.value.title);
+  formData.append('content', form.value.content || '');
+  formData.append('tools', form.value.tools);
+  formData.append('visibility', form.value.visibility);
+  formData.append('status', form.value.draft ? 1 : 2);
+
+  selectedTags.value.forEach(tag => {
+    formData.append('tags[]', tag.name);
+  });
+
+  form.value.images.forEach(file => {
+    formData.append('images[]', file);
+  });
+
+  try {
+    const res = await api.post('/posts', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+        Accept: 'application/json'
+      }
+    });
+
+    successMessage.value = 'Проект опубликован!';
+    form.value = {
+      title: '',
+      content: '',
+      images: [],
+      tools: '',
+      visibility: 'public',
+      draft: false,
+      tags: ''
+    };
+    selectedTags.value = [];
+  } catch (e) {
+    if (e.response && e.response.data) {
+      const errors = e.response.data.errors;
+      if (errors) {
+        for (const key in errors) {
+          errorMessages.value.push(`${key}: ${errors[key].join(', ')}`);
+        }
+      } else {
+        errorMessages.value = [e.response.data.message || 'Ошибка сервера'];
+      }
+    } else {
+      errorMessages.value = ['Ошибка сети или запроса'];
+    }
+  }
+}
+
+function openTagModal() {
+  isTagModalOpen.value = true;
+  tagSearchQuery.value = '';
+  searchResults.value = [];
+}
+
+function closeTagModal() {
+  isTagModalOpen.value = false;
+}
+
+async function handleTagSearch() {
+  if (!tagSearchQuery.value.trim()) {
+    searchResults.value = [];
+    canCreateTag.value = false;
+    return;
+  }
+
+  try {
+    const res = await api.get(`/tags/search?q=${encodeURIComponent(tagSearchQuery.value)}`);
+    searchResults.value = res.data.tags;
+    canCreateTag.value = res.data.can_create;
+  } catch (e) {
+    console.error("Ошибка поиска тегов:", e);
+    searchResults.value = [];
+    canCreateTag.value = false;
+  }
+}
+
+function selectTag(tag) {
+  if (!selectedTags.value.some(t => t.id === tag.id)) {
+    selectedTags.value.push(tag);
+    form.value.tags = selectedTags.value.map(t => t.name).join(', ');
+  }
+}
+
+function removeTag(tag) {
+  selectedTags.value = selectedTags.value.filter(t => t.id !== tag.id);
+  form.value.tags = selectedTags.value.map(t => t.name).join(', ');
+}
+
+async function createAndAddTag() {
+  try {
+    const res = await api.post('/tags', { name: tagSearchQuery.value });
+    const newTag = res.data.tag;
+
+    selectedTags.value.push(newTag);
+    searchResults.value.push(newTag);
+    form.value.tags = selectedTags.value.map(t => t.name).join(', ');
+
+    tagSearchQuery.value = '';
+    canCreateTag.value = false;
+  } catch (e) {
+    console.error("Ошибка создания тега:", e);
+    errorMessages.value.push("Не удалось создать тег");
+  }
+}
+
+onMounted(async () => {
+  // Если юзер не загружен, но авторизован — загружаем
+  if (!store.getters.user && store.getters.isAuthenticated) {
+    await store.dispatch('getUser');
+  }
+
+  // Если после загрузки всё равно null — редиректим
+  if (!store.getters.user) {
+    router.push('/login');
+    return;
+  }
+});
+
+</script>
+
 <template>
   <div class="publish-container">
     <h1 class="title">Опубликовать проект</h1>
@@ -33,17 +213,14 @@
 
       <!-- Превью изображений -->
       <div v-if="form.images.length" class="preview">
-        <div
-          v-for="(image, index) in form.images"
-          :key="index"
-          class="image-thumb"
-        >
+        <div v-for="(image, index) in form.images" :key="index" class="image-thumb">
           <img :src="image.preview" />
         </div>
       </div>
 
       <!-- Поле для тегов -->
       <div class="tag-input">
+
         <input
           v-model="form.tags"
           placeholder="Теги (через запятую)"
@@ -57,6 +234,7 @@
 
       <!-- Отображение выбранных тегов -->
       <div v-if="selectedTags.length" class="selected-tags">
+
         <span
           v-for="tag in selectedTags"
           :key="tag.id"
@@ -82,10 +260,10 @@
 
       <!-- Контент 18+ -->
       <div class="checkbox-group">
-        <label><input type="checkbox" v-model="form.isAdult" /> Контент 18+</label>
+        <label><input type="checkbox" v-model="form.draft" /> Черновик</label>
       </div>
 
-      <!-- Кнопка продолжения -->
+       <!-- Кнопка продолжения -->
       <button
         :disabled="!canContinue"
         @click="showModal = true"
@@ -110,7 +288,8 @@
           </select>
         </div>
         <div class="checkbox-group">
-          <label><input type="checkbox" v-model="form.isAdult" /> Контент 18+</label>
+          <label><input type="checkbox" v-model="form.draft" /> Черновик</label>
+
         </div>
         <div class="modal-actions">
           <button @click="handleSubmit" class="confirm-btn">Опубликовать</button>
@@ -160,170 +339,6 @@
     </div>
   </div>
 </template>
-
-<script>
-import api from '/src/axios.js';
-
-export default {
-  data() {
-    return {
-      form: {
-        title: '',
-        content: '',
-        images: [],
-        tools: '',
-        visibility: 'public',
-        isAdult: false,
-        tags: '' // Отображение тегов в поле ввода
-      },
-      successMessage: '',
-      errorMessages: [],
-      showModal: false,
-      isTagModalOpen: false,
-      tagSearchQuery: '',
-      searchResults: [],
-      canCreateTag : false,
-      selectedTags: [] // Список выбранных тегов
-    };
-  },
-  computed: {
-    canContinue() {
-      return (
-        this.form.title.trim().length > 0 ||
-        this.form.content.trim().length > 0 ||
-        this.form.images.length > 0
-      );
-    }
-  },
-  methods: {
-    handleImageChange(e) {
-      const files = Array.from(e.target.files);
-      this.form.images = files.map(file => {
-        file.preview = URL.createObjectURL(file);
-        return file;
-      });
-    },
-    async handleSubmit() {
-      this.errorMessages = [];
-      this.successMessage = '';
-      this.showModal = false;
-
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        this.errorMessages.push('Необходима авторизация.');
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append('title', this.form.title);
-      formData.append('content', this.form.content || '');
-      formData.append('tools', this.form.tools);
-      formData.append('visibility', this.form.visibility);
-      formData.append('is_adult', this.form.isAdult);
-
-
-
-     
-      this.selectedTags.forEach(tag => {
-        formData.append('tags[]', tag.name);
-      });
-
-     
-      this.form.images.forEach(file => {
-        formData.append('images[]', file);
-      });
-
-
-
-      try {
-        const res = await api.post('/posts', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            Authorization: `Bearer ${token}`,
-            Accept: 'application/json'
-          }
-        });
-
-        this.successMessage = 'Проект опубликован!';
-        this.form = {
-          title: '',
-          content: '',
-          images: [],
-          tools: '',
-          visibility: 'public',
-          isAdult: false,
-          tags: ''
-        };
-        this.selectedTags = [];
-      } catch (e) {
-        if (e.response && e.response.data) {
-          const errors = e.response.data.errors;
-          if (errors) {
-            for (const key in errors) {
-              this.errorMessages.push(`${key}: ${errors[key].join(', ')}`);
-            }
-          } else {
-            this.errorMessages = [e.response.data.message || 'Ошибка сервера'];
-          }
-        } else {
-          this.errorMessages = ['Ошибка сети или запроса'];
-        }
-      }
-    },
-    openTagModal() {
-      this.isTagModalOpen = true;
-      this.tagSearchQuery = '';
-      this.searchResults = [];
-    },
-    closeTagModal() {
-      this.isTagModalOpen = false;
-    },
-    async handleTagSearch() {
-      if (!this.tagSearchQuery.trim()) {
-        this.searchResults = [];
-        this.canCreateTag = false;
-        return;
-      }
-
-      try {
-        const res = await api.get(`/tags/search?q=${encodeURIComponent(this.tagSearchQuery)}`);
-        this.searchResults = res.data.tags;
-        this.canCreateTag = res.data.can_create;
-      } catch (e) {
-        console.error("Ошибка поиска тегов:", e);
-        this.searchResults = [];
-        this.canCreateTag = false;
-      }
-    },
-    selectTag(tag) {
-      if (!this.selectedTags.some(t => t.id === tag.id)) {
-        this.selectedTags.push(tag);
-        this.form.tags = this.selectedTags.map(t => t.name).join(', ');
-      }
-    },
-    removeTag(tag) {
-      this.selectedTags = this.selectedTags.filter(t => t.id !== tag.id);
-      this.form.tags = this.selectedTags.map(t => t.name).join(', ');
-    },
-    async createAndAddTag() {
-      try {
-        const res = await api.post('/tags', { name: this.tagSearchQuery });
-        const newTag = res.data.tag;
-
-        this.selectedTags.push(newTag);
-        this.searchResults.push(newTag);
-        this.form.tags = this.selectedTags.map(t => t.name).join(', ');
-
-        this.tagSearchQuery = '';
-        this.canCreateTag = false;
-      } catch (e) {
-        console.error("Ошибка создания тега:", e);
-        this.errorMessages.push("Не удалось создать тег");
-      }
-    }
-  }
-};
-</script>
 
 <style scoped>
 /* Общие стили */

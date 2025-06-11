@@ -210,12 +210,17 @@ async function fetchSubscribersCount() {
 function openModal(p) { selectedProject.value = p; fetchProjectModalData(p.id) }
 function closeModal() { selectedProject.value = null }
 
-// Watch route param for user change
-watch(() => route.params.userId, async (newId) => {
-  const id = newId || 'me'
-  await fetchProfile(id)
-  await Promise.all([fetchUserProjects(id), fetchLikedProjects(), fetchFavoritedProjects(), fetchSubscriptionsCount(), fetchSubscribersCount()])
-}, { immediate: true })
+watch(() => route.params.userId, async (newUserId) => {
+  if (newUserId) {
+    await fetchProfile(newUserId);
+    await Promise.all([
+      fetchUserProjects(newUserId),
+      fetchLikedProjects(),
+      fetchSubscriptionsCount(),
+      fetchSubscribersCount()
+    ]);
+  }
+}, { immediate: true });
 
 // Initial mount
 onMounted(async () => {
