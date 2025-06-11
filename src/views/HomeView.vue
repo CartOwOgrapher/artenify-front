@@ -105,35 +105,54 @@ function onImageSearch() {
 .bg-right {
   position: absolute;
   top: 0;
-  height: auto;
-  max-height: 100vh;
-  width: auto;
+  height: 100vh;        /* тянем на всю высоту окна */
+  width: 40vw;          /* оставляем вашу логику по ширине */
+   /* если это img — кадрирует по центру без искажений */
   z-index: 10;
 }
 .bg-left { left: 0; }
 .bg-right { right: 0; }
 
+
+/* 1) Большие экраны > 1200px — 20vw (дефолт) */
+/* 2) Средние экраны 1200px — 901px */
+@media (max-width: 1200px) and (min-width: 901px) {
+  .bg-left,
+  .bg-right {
+    width: 15vw;
+  }
+}
+/* 5) Супер-малые экраны < 400px */
+@media (max-width: 1200px) {
+  .bg-left,
+  .bg-right {
+    display: none;
+  }
+}
+
 /* Логотип */
 .logo-container {
   position: absolute;
-  top: 105px;
-  left: calc(250px + (100vw - 1120px) / 2);
+  top: 65px;
+  /* центр от 0 до 66.666% ширины окна = 66.666% / 2 = 33.333% */
+  left: 33.333vw;
   transform: translateX(-50%);
   z-index: 9;
   width: 170px;
   height: auto;
 }
 
-/* Контейнер плейсхолдеров */
+/* ================================================
+   Десктопные стили для плейсхолдеров
+   ================================================ */
 .placeholders-wrapper {
   position: absolute;
-  top: 200px;
-  left: 45%;
-  transform: translateX(-50%);
-  width: 1200px;
+  left: calc((50vw * 2 / 3) / 2);
+  box-sizing: border-box;
   z-index: 9;
 }
 
+/* Общие стили для каждого плейсхолдера */
 .placeholder {
   position: absolute;
   width: 454px;
@@ -144,39 +163,84 @@ function onImageSearch() {
   justify-content: center;
   overflow: hidden;
   cursor: pointer;
-  z-index: 9;
-}
+  transition: transform .2s;
 
-.placeholder:hover .placeholder-img {
-  filter: brightness(0.7);
-  z-index: 9;
 }
-
+.placeholder:hover {
+  transform: scale(1.03);
+}
 .placeholder-img {
   width: 77%;
   height: 77%;
   object-fit: cover;
+
 }
 
-/* Позиции конкретных плейсхолдеров */
+/* Позиции конкретных плейсхолдеров (десктоп) */
 .placeholder-1 {
   left: 0;
-  top: 0;
+  top: -1045px;
   z-index: 11;
 }
 .placeholder-2 {
   left: calc(0px + 418px + 20px);
-  top: 95px;
+  top: calc(-1045px + 95px);
   z-index: 11;
 }
 .placeholder-3 {
   left: calc(0px + 454px + 40px - 320px);
-  top: calc(95px + 350px);
+  top: calc(-1045px + 95px + 350px);
   z-index: 11;
 }
 .placeholder-4 {
   left: calc(0px + 454px + 40px - 260px + 380px);
-  top: calc(95px + 27px + 400px);
+  top: calc(-1045px + 95px + 27px + 400px);
   z-index: 11;
+}
+
+
+/* ================================================
+   Мобильные экраны < 1200px
+   ================================================ */
+@media (max-width: 1200px) {
+  .logo-container {
+    position: relative;
+    top: -1600px;
+    left: auto;
+    transform: none;
+    margin: 0 auto 20px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .placeholders-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    left: auto;
+    top: -1600px;
+    gap: 11px;
+ 
+    margin: 45px;
+    width: 100vw;
+    max-width: none;
+    height: auto;
+    position: relative;
+  }
+
+  .placeholder {
+    position: static;
+    width: 150px;
+    height: 120px;
+  }
+
+  .placeholder-img {
+    width: 80%;
+    height: 80%;
+  }
+}
+
+/* Предотвращаем горизонтальную прокрутку */
+main {
+  overflow-x: hidden;
 }
 </style>
