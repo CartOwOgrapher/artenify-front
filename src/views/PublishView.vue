@@ -184,16 +184,31 @@ onMounted(async () => {
 
     <div class="form">
       <!-- Заголовок -->
-      <input v-model="form.title" placeholder="Заголовок проекта" maxlength="30" class="input" />
+      <input
+        v-model="form.title"
+        placeholder="Заголовок проекта"
+        maxlength="30"
+        class="input"
+      />
 
       <!-- Описание -->
-      <textarea v-model="form.content" placeholder="Опиши, что ты создал..." class="textarea" rows="5"></textarea>
+      <textarea
+        v-model="form.content"
+        placeholder="Опиши, что ты создал..."
+        class="textarea"
+        rows="5"
+      ></textarea>
 
       <!-- Загрузка изображений -->
       <label class="upload-label">
         Загрузить изображения
-        <input type="file" multiple accept="image/jpeg,image/png,image/webp" @change="handleImageChange"
-          class="file-input" />
+        <input
+          type="file"
+          multiple
+          accept="image/jpeg,image/png,image/webp"
+          @change="handleImageChange"
+          class="file-input"
+        />
       </label>
 
       <!-- Превью изображений -->
@@ -205,7 +220,13 @@ onMounted(async () => {
 
       <!-- Поле для тегов -->
       <div class="tag-input">
-        <input v-model="form.tags" placeholder="Теги (через запятую)" class="input" disabled />
+
+        <input
+          v-model="form.tags"
+          placeholder="Теги (через запятую)"
+          class="input"
+          disabled
+        />
         <button @click="openTagModal" type="button" class="tag-btn">
           Выбрать
         </button>
@@ -213,7 +234,12 @@ onMounted(async () => {
 
       <!-- Отображение выбранных тегов -->
       <div v-if="selectedTags.length" class="selected-tags">
-        <span v-for="tag in selectedTags" :key="tag.id" class="tag-pill">
+
+        <span
+          v-for="tag in selectedTags"
+          :key="tag.id"
+          class="tag-pill"
+        >
           {{ tag.name }}
           <button @click="removeTag(tag)" class="remove-tag">×</button>
         </span>
@@ -237,8 +263,12 @@ onMounted(async () => {
         <label><input type="checkbox" v-model="form.draft" /> Черновик</label>
       </div>
 
-      <!-- Кнопка продолжения -->
-      <button :disabled="!canContinue" @click="showModal = true" class="continue-btn">
+       <!-- Кнопка продолжения -->
+      <button
+        :disabled="!canContinue"
+        @click="showModal = true"
+        class="continue-btn"
+      >
         Продолжить
       </button>
     </div>
@@ -259,6 +289,7 @@ onMounted(async () => {
         </div>
         <div class="checkbox-group">
           <label><input type="checkbox" v-model="form.draft" /> Черновик</label>
+
         </div>
         <div class="modal-actions">
           <button @click="handleSubmit" class="confirm-btn">Опубликовать</button>
@@ -279,9 +310,19 @@ onMounted(async () => {
     <div v-if="isTagModalOpen" class="modal-overlay">
       <div class="modal tag-modal">
         <h2>Выберите теги</h2>
-        <input v-model="tagSearchQuery" placeholder="Поиск или создание тега" class="input" @input="handleTagSearch" />
+        <input
+          v-model="tagSearchQuery"
+          placeholder="Поиск или создание тега"
+          class="input"
+          @input="handleTagSearch"
+        />
         <div class="search-results">
-          <div v-for="tag in searchResults" :key="tag.id" class="tag-result" @click="selectTag(tag)">
+          <div
+            v-for="tag in searchResults"
+            :key="tag.id"
+            class="tag-result"
+            @click="selectTag(tag)"
+          >
             {{ tag.name }}
           </div>
         </div>
