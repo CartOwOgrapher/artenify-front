@@ -7,6 +7,7 @@
     <div>
       <SearchPanel
         :available-tags="availableTags"
+        :availableCategories="availableCategories"
         @filter-changed="onFilterChanged"
         @image-search="onImageSearch"
       />
@@ -62,12 +63,17 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost/api/
 const projects      = ref([])
 const isLoading     = ref(false)
 const availableTags = ref([])
+const availableCategories = ref([])
 
 // загружаем теги из API
 onMounted(async () => {
   try {
     const res = await axios.get(`${API_BASE_URL}/tags`)
     availableTags.value = res.data || []
+    const res2 = await axios.get(`${API_BASE_URL}/categories`)
+    availableCategories.value = res2.data || []
+    console.log(availableCategories.value)
+    console.log(availableTags.value)
   } catch (e) {
     console.error('Ошибка загрузки тегов:', e)
   }
@@ -77,7 +83,8 @@ onMounted(async () => {
 const filters = ref({
   search: '',
   sort: 'recommended',
-  tags: []
+  tags: [],
+  category : ''
 })
 
 async function loadProjects(page = 1) {

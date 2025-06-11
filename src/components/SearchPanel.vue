@@ -17,7 +17,7 @@
             <label class="filter-label">Категория</label>
             <select v-model="selectedCategory" class="filter-select">
               <option disabled value="">Выберите категорию</option>
-              <option v-for="cat in categoryList" :key="cat" :value="cat">{{ cat }}</option>
+              <option v-for="cat in categoryList" :key="cat" :value="cat.id">{{ cat.name}}</option>
             </select>
           </div>
 
@@ -79,7 +79,8 @@
 import { ref, computed, watch } from 'vue'
 
 const props = defineProps({
-  availableTags: { type: Object, default: () => ({ tags: [] }) }
+  availableTags: { type: Object, default: () => ({ tags: [] }) },
+  availableCategories : { type:Object, default: () => ({categories: []})}
 })
 const emit = defineEmits(['filter-changed', 'image-search'])
 
@@ -92,8 +93,7 @@ const sortType = ref('recommended')
 const showFilterMenu = ref(false)
 const showSortMenu = ref(false)
 
-const categoryList = ['Украшения', 'Графика', 'Мода', 'Архитектура'] // Заглушка
-
+const categoryList = computed(() => props.availableCategories.categories || [])
 const tagsArray = computed(() => props.availableTags.tags || [])
 
 const filteredTags = computed(() => {
@@ -125,20 +125,28 @@ function applySort(type) {
   sortType.value = type
   showSortMenu.value = false
 }
+
+function fetchCategories() { 
+
+}
 </script>
 
 <style scoped>
 .search-panel {
+  position: sticky;
+  margin-top: 870px;
+  top: 65px;
+  width: 100vw;
+  min-height: 67px;
+  background: white;
   display: flex;
   align-items: center;
-  padding: 8px 16px;
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  border-radius: 10px;
-  gap: 12px;
-  position: sticky;
-  top: 65px;
-  z-index: 100;
+  justify-content: space-around;
+  padding: 0 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 200;
+  box-sizing: border-box;
+  flex-wrap: wrap;
 }
 
 /* Общие кнопки */
