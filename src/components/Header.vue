@@ -23,8 +23,8 @@ const closeMenu = () => {
 }
 
 // Выход
-const logout = () => {
-  store.dispatch('logout')
+async function logout(){
+  await store.dispatch('logout');
   router.push('/login');
 }
 

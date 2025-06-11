@@ -42,6 +42,7 @@ const store = createStore({
 
     actions: {
         async getUser({ commit }) {
+            if (store.user) return;
             try {
                 const response = await api.get('/profile/me', { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } });
                 commit('setUser', response.data);

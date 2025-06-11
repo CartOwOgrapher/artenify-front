@@ -20,8 +20,7 @@ const login = async () => {
     })
 
     if (response.status == 200) {
-      const redirectPath = store.getters.redirect || '/'
-      await router.push(redirectPath)
+      await router.push('/')
     }
     else {
       error.value = response.statusText

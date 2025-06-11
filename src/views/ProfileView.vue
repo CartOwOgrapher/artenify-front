@@ -187,7 +187,6 @@ function closeModal() { selectedProject.value = null }
 
 watch(() => route.params.userId, async (newUserId) => {
   if (newUserId) {
-    console.log(newUserId);
     await fetchProfile(newUserId);
     await Promise.all([
       fetchUserProjects(newUserId),
@@ -200,7 +199,6 @@ watch(() => route.params.userId, async (newUserId) => {
 
 onMounted(async () => {
   let userId = route.params.userId;
-  console.log(userId)
   if (!userId || userId === 'me') {
     if (!store.state.user && store.getters.isAuthenticated) {
       await store.dispatch('getUser');
@@ -213,7 +211,6 @@ onMounted(async () => {
 
     userId = store.state.user.id;
   }
-  console.log(userId);
   await fetchProfile(userId);
   await Promise.all([
     fetchUserProjects(userId),
