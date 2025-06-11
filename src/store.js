@@ -75,6 +75,8 @@ const store = createStore({
                 commit('clearUser');
 
             } catch (error) {
+                localStorage.removeItem('access_token');
+                commit('clearUser');
                 console.error('Logout failed:', error);
             }
         },
