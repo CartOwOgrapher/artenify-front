@@ -9,6 +9,9 @@ import { ru } from 'date-fns/locale'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost/api/v1'
 
+import AnalyticsTab from '@/components/AnalyticsTab.vue'
+
+
 // Router & Store
 const route = useRoute()
 const router = useRouter()
@@ -594,7 +597,7 @@ const tabs = computed(() => {
 
     <!-- Others Tabs... -->
     <div v-if="activeTab==='Продвижение+'" class="projects"><h3>Продвижение+</h3><div class="tab-content">Продвижение в разработке</div></div>
-    <div v-if="activeTab==='Статистика'" class="projects"><h3>Статистика</h3><div class="tab-content">Статистика по проектам будет здесь</div></div>
+    <AnalyticsTab v-if="activeTab==='Статистика'" />
     <div v-if="activeTab==='Черновики' && selectedUserId === currentUserId" class="projects">
       <h3>Черновики</h3>
       <div v-if="loadingDraft" class="spinner"/>
