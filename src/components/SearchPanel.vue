@@ -13,9 +13,17 @@
           <div class="filter-section">
             <label class="filter-label">Категория</label>
             <select v-model="selectedCategory" class="filter-select">
-              <option disabled value="">Выберите категорию</option>
-              <option v-for="cat in categoryList" :key="cat" :value="cat.id">{{ cat.name}}</option>
-            </select>
+
+            <option value="">Нет</option>
+            <option
+              v-for="cat in categoryList"
+              :key="cat.id"
+              :value="cat.id"
+            >
+              {{ cat.name }}
+            </option>
+          </select>
+
           </div>
 
           <!-- Теги -->
@@ -40,6 +48,7 @@
           </div>
         </div>
       </transition>
+
     </div>
 
     <!-- Поиск -->
@@ -77,10 +86,12 @@ import { ref, computed, watch } from 'vue'
 
 const props = defineProps({
   availableTags: { type: Object, default: () => ({ tags: [] }) },
-  availableCategories : { type:Object, default: () => ({categories: []})}
+  availableCategories: { type: Object, default: () => ({ categories: [] }) }
+
 })
 const emit = defineEmits(['filter-changed', 'image-search'])
 
+// Фильтры
 const searchQuery = ref('')
 const tagSearch = ref('')
 const selectedTags = ref([])
@@ -89,6 +100,7 @@ const sortType = ref('recommended')
 
 const showFilterMenu = ref(false)
 const showSortMenu = ref(false)
+
 
 const categoryList = computed(() => props.availableCategories.categories || [])
 const tagsArray = computed(() => props.availableTags.tags || [])
@@ -106,16 +118,18 @@ const sortLabel = computed(() => ({
   oldest: 'По дате (старые)'
 }[sortType.value]))
 
+
+const filterData = computed(() => ({
+  search: searchQuery.value,
+  sort: sortType.value,
+  tags: selectedTags.value,
+  category: selectedCategory.value
+}))
+
 watch(
-  [searchQuery, selectedTags, sortType, selectedCategory],
-  () => {
-    emit('filter-changed', {
-      search: searchQuery.value,
-      sort: sortType.value,
-      tags: selectedTags.value,
-      category: selectedCategory.value
-    })
-  }
+  [searchQuery, selectedTags, selectedCategory, sortType],
+  () => emit('filter-changed', filterData.value),
+  { immediate: true }
 )
 
 function applySort(type) {
@@ -123,15 +137,13 @@ function applySort(type) {
   showSortMenu.value = false
 }
 
-function fetchCategories() { 
-
-}
 </script>
 
 <style scoped>
 .search-panel {
   position: sticky;
   margin-top: 80vh;
+
   min-height: 67px;
   background: white;
   display: flex;

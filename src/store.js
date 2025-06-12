@@ -42,7 +42,6 @@ const store = createStore({
 
     actions: {
         async getUser({ commit }) {
-            if (store.user) return;
             try {
                 const response = await api.get('/profile/me', { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } });
                 commit('setUser', response.data);
@@ -52,6 +51,8 @@ const store = createStore({
         },
         async login({ dispatch, commit }, { email, password }) {
             commit('clearErrors');
+            localStorage.removeItem('access_token');
+            commit('clearUser');
             try {
         
                 const response = await api.post('/auth/login', { email, password });
@@ -70,14 +71,12 @@ const store = createStore({
             }
         },
         async logout({ commit }) {
+            commit('clearErrors');
             try {
                 await api.post('/auth/logout', { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } });
 
             } catch (error) {
-                localStorage.removeItem('access_token');
-                commit('clearUser');
-                console.error('Logout failed:', error);
-                
+                console.error('Logout failed:', error); 
             }
             localStorage.removeItem('access_token');
             commit('clearUser');

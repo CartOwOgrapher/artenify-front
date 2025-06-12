@@ -1,86 +1,28 @@
-<script setup>
-import { ref, computed, onMounted } from 'vue'
-import axios from 'axios'
-import SearchPanel from '@/components/SearchPanel.vue'
-import PlaceholderGrid from '@/components/PlaceholderGrid.vue'
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost/api/v1'
-
-// Полный список проектов
-const projects = ref([])
-
-// Фильтры
-const filters = ref({
-  search: '',
-  sort: ''
-})
-
-// Отфильтрованный список
-const filtered = computed(() => {
-  let list = projects.value
-
-  // Поиск по заголовку
-  if (filters.value.search) {
-    const term = filters.value.search.toLowerCase()
-    list = list.filter(p => p.title.toLowerCase().includes(term))
-  }
-
-  // Сортировка (если понадобится)
-  if (filters.value.sort === 'date') {
-    list = [...list].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-  }
-  // доп. ветки sort...
-
-  return list
-})
-
-// Fetch проектов при старте
-onMounted(async () => {
-  try {
-    const { data } = await axios.get(`${API_BASE_URL}/posts`, {
-      params: { page: 1 }
-    })
-    projects.value = data.data || []
-  } catch (e) {
-    console.error('Ошибка загрузки проектов:', e)
-  }
-})
-
-// Хендлер из SearchPanel
-function onFilterChanged({ search, sort }) {
-  filters.value.search = search
-  filters.value.sort = sort
-}
-
-// Поиск по картинке (пример)
-function onImageSearch() {
-  console.log('Image search triggered')
-}
-</script>
-
 <template>
   <main>
     <!-- Фоновые картинки -->
     <img class="bg-left" src="@/assets/L_background.png" alt="Left Background" />
     <img class="bg-right" src="@/assets/R_background.png" alt="Right Background" />
 
-    <!-- Основной контент -->
     <div>
-          <SearchPanel
-      @filter-changed="onFilterChanged"
-      @image-search="onImageSearch"
-    />
+      <SearchPanel
+        :available-tags="availableTags"
+        :availableCategories="availableCategories"
+        @filter-changed="onFilterChanged"
+        @image-search="onImageSearch"
+      />
 
-    <PlaceholderGrid
-      :displayedProjects="filtered"
-    />
+      <PlaceholderGrid
+        :displayedProjects="projects"
+        :loading="isLoading"
+      />
 
       <!-- Логотип -->
       <div class="logo-container">
         <img src="@/assets/top_art_logo.png" alt="Top Art Logo" class="top-logo" />
       </div>
 
-      <!-- Контейнер с плейсхолдерами -->
+      <!-- Плейсхолдеры -->
       <div class="placeholders-wrapper">
         <div class="placeholder placeholder-1">
           <img src="@/assets/2.png" alt="Placeholder 1" class="placeholder-img" />
@@ -95,9 +37,95 @@ function onImageSearch() {
           <img src="@/assets/p_test.png" alt="Placeholder 4" class="placeholder-img" />
         </div>
       </div>
+
+      <!-- Индикатор загрузки -->
+      <div v-if="isLoading" class="loading-indicator">
+        Загрузка проектов...
+      </div>
+
+      <!-- Сообщение об отсутствии результатов -->
+      <div v-if="!isLoading && projects.length === 0" class="no-results">
+        <p>Проекты не найдены</p>
+        <p>Попробуйте изменить критерии поиска или фильтры</p>
+      </div>
     </div>
   </main>
 </template>
+
+<script setup>
+import { ref, onMounted } from 'vue'
+import axios from 'axios'
+import SearchPanel from '@/components/SearchPanel.vue'
+import PlaceholderGrid from '@/components/PlaceholderGrid.vue'
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost/api/v1'
+
+const projects      = ref([])
+const isLoading     = ref(false)
+const availableTags = ref([])
+const availableCategories = ref([])
+
+// загружаем теги из API
+onMounted(async () => {
+  try {
+    const res = await axios.get(`${API_BASE_URL}/tags`)
+    availableTags.value = res.data || []
+    const res2 = await axios.get(`${API_BASE_URL}/categories`)
+    availableCategories.value = res2.data || []
+    console.log(availableCategories.value)
+    console.log(availableTags.value)
+  } catch (e) {
+    console.error('Ошибка загрузки тегов:', e)
+  }
+})
+
+// текущие фильтры
+const filters = ref({
+  search: '',
+  sort: 'recommended',
+  tags: [],
+  category : ''
+})
+
+async function loadProjects(page = 1) {
+  if (isLoading.value) return
+  isLoading.value = true
+
+  try {
+    
+    const params = {
+      page,
+      ...(filters.value.search && { search: filters.value.search }),
+      ...(filters.value.sort !== 'recommended' && { sort: filters.value.sort }),
+      ...(filters.value.tags.length && { tags: filters.value.tags.join(',') }),
+      ...(filters.value.category) && { category: filters.value.category }
+    }
+    console.log(params)
+    const { data } = await axios.get(`${API_BASE_URL}/posts`, { params })
+    projects.value = page === 1
+      ? data.data || []
+      : [...projects.value, ...(data.data || [])]
+  } catch (e) {
+    console.error('Ошибка загрузки проектов:', e)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+onMounted(() => loadProjects())
+
+function onFilterChanged({ search, sort, tags , category}) {
+  filters.value.search = search ?? ''
+  filters.value.sort   = sort   ?? 'recommended'
+  filters.value.tags   = tags   ?? []
+  filters.value.category = category ?? ''
+  loadProjects(1)
+}
+
+function onImageSearch() {
+  console.log('Image search triggered')
+}
+</script>
 
 <style scoped>
 /* Фоновые картинки */
@@ -139,7 +167,6 @@ function onImageSearch() {
   transform: translateX(-50%);
   z-index: 9;
   width: 170px;
-  height: auto;
 }
 
 /* ================================================

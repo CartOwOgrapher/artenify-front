@@ -1,0 +1,307 @@
+<template>
+  <div class="search-panel">
+    <button class="filter-btn" @click="toggleSortMenu">▼ Фильтр</button>
+
+    <div class="search-input">
+      <i class="icon">🔍</i>
+      <input
+        type="text"
+        placeholder="Поиск творческих работ сообщества"
+        v-model="searchQuery"
+      />
+      <button class="image-search" @click="$emit('image-search')">🖼</button>
+    </div>
+
+    <button class="recommended-btn" @click="applySort('recommended')">
+      Рекомендуемые ▼
+    </button>
+
+    <div v-if="showSortMenu" class="sort-menu">
+      <div @click="applySort('latest')">По дате (сначала новые)</div>
+      <div @click="applySort('oldest')">По дате (сначала старые)</div>
+      <div @click="applySort('recommended')">Рекомендуемые</div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, watch } from 'vue'
+
+const emit = defineEmits(['filter-changed', 'image-search'])
+const searchQuery = ref('')
+const showSortMenu = ref(false)
+
+watch(searchQuery, (val) => {
+  emit('filter-changed', { search: val, sort: null })
+})
+
+function toggleSortMenu() {
+  showSortMenu.value = !showSortMenu.value
+}
+
+function applySort(type) {
+  emit('filter-changed', { search: searchQuery.value, sort: type })
+  showSortMenu.value = false
+}
+</script>
+
+
+
+<style scoped>
+.search-panel {
+  position: sticky;
+  margin-top: 910px;
+  top: 65px;
+  width: 100vw;
+  min-height: 67px;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 200;
+  box-sizing: border-box;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 1400px) {
+  .search-panel{
+    margin-top: 850px;
+  }
+}
+
+@media (max-width: 1300px) {
+  .search-panel{
+    margin-top: 810px;
+  }
+}
+
+.filter-btn,
+.recommended-btn {
+  background: #ff69b4;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 5px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s ease;
+}
+
+.filter-btn:hover,
+.recommended-btn:hover {
+  background: #e055a0;
+}
+
+/* === Поисковое поле с кнопкой внутри === */
+.search-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: #f5f5f5;
+  border-radius: 25px;
+  padding: 5px 10px;
+  width: 100%;
+  max-width: 600px;
+  transition: all 0.3s ease;
+}
+
+.search-input input {
+  border: none;
+  background: transparent;
+  padding: 5px 10px;
+  flex: 1;
+  outline: none;
+  font-size: 16px;
+  padding-right: 80px; /* Отступ для кнопки внутри */
+}
+
+/* === Кнопка "Поиск по картинке" внутри поля === */
+.image-search {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #ff69b4;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 4px 8px;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.image-search:hover {
+  background: #e055a0;
+}
+
+.icon {
+  margin-right: 5px;
+}
+
+/* === Панель фильтров === */
+.filters-panel {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border-radius: 10px;
+  gap: 12px;
+  position: sticky;
+  top: 65px;
+  z-index: 100;
+}
+
+.tags-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tags-filter label {
+  font-weight: 600;
+  color: #333;
+}
+
+.tags-input-container {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+}
+
+.tag-search-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  outline: none;
+  font-size: 14px;
+}
+
+.tag-search-input:focus {
+  border-color: #ff69b4;
+}
+
+.tag-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.tag-dropdown-item {
+  padding: 10px 15px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background-color 0.2s;
+}
+
+.tag-dropdown-item:hover {
+  background-color: #f5f5f5;
+}
+
+.tag-dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.selected-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  background: #ff69b4;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 15px;
+  font-size: 14px;
+  gap: 5px;
+}
+
+.tag-remove {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0;
+  margin-left: 5px;
+}
+
+.tag-remove:hover {
+  color: #ffccdd;
+}
+
+/* === Адаптивное скрытие кнопок постепенно при уменьшении ширины экрана === */
+
+@media (max-width: 900px) {
+  .search-panel .recommended-btn {
+    display: none;
+  }
+}
+
+@media (max-width: 360px) {
+  .search-panel .image-search {
+    display: none;
+  }
+
+  .search-input input {
+    padding-right: 10px;
+  }
+
+  .search-input {
+    flex: 1 1 100%;
+    width: 100%;
+    margin-top: 10px;
+  }
+
+  .search-panel {
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: stretch;
+    padding: 10px;
+  }
+}
+
+@media (max-width: 724px) {
+  .search-panel .filter-btn {
+    display: none;
+  }
+
+  .search-input input {
+    font-size: 14px;
+    padding: 4px 8px;
+  }
+
+  .search-input {
+    padding: 4px 8px;
+  }
+
+  .filters-panel {
+    padding: 10px;
+  }
+
+  .tags-input-container {
+    max-width: 100%;
+  }
+}
+</style>

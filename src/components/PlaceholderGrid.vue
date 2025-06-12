@@ -149,7 +149,7 @@ watch(selectedProject, p => {
           class="placeholder-img"
         />
         <div v-else class="placeholder-img">Нет изображения</div>
-        <div class="card-like-block">Лайки: {{ project.likeCount || 0 }}</div>
+        <div class="card-like-block">Лайки: {{ project.likes }}</div>
       </div>
     </div>
 
