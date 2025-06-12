@@ -78,8 +78,8 @@ async function fetchLikeCount(postId) {
 async function fetchSubscriptionStatus(toUserId) {
   if (!currentUserId) return;
   try {
-    const res = await api.get(`/subscriptions/subscription/check/${toUserId}`, { 
-      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } 
+    const res = await api.get(`/subscriptions/subscription/check/${toUserId}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
     });
     isSubscribed.value = res.data.isSubscribed;
   } catch (err) {
@@ -90,8 +90,8 @@ async function fetchSubscriptionStatus(toUserId) {
 
 async function subscribeToUser(toUserId) {
   try {
-    await api.post(`/subscriptions/subscribe/${toUserId}`, {}, { 
-      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } 
+    await api.post(`/subscriptions/subscribe/${toUserId}`, {}, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
     });
     isSubscribed.value = true;
     await fetchProfileCounts(route.params.userId);
@@ -102,8 +102,8 @@ async function subscribeToUser(toUserId) {
 
 async function unsubscribeFromUser(toUserId) {
   try {
-    await api.post(`/subscriptions/unsubscribe/${toUserId}`, {}, { 
-      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } 
+    await api.post(`/subscriptions/unsubscribe/${toUserId}`, {}, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
     });
     isSubscribed.value = false;
     await fetchProfileCounts(route.params.userId);
@@ -145,19 +145,19 @@ async function fetchProfile(userId) {
     userName.value = res.data.name
     userCreated.value = res.data.created_at || res.data.createdAt || res.data.createdAt
     profileViews.value = res.data.views ?? 0
-    
+
     if (res.data.banner) {
       bannerImage.value = `${api.defaults.imageURL}/${res.data.banner}`
     }
     if (res.data.avatar) {
       avatarImage.value = `${api.defaults.imageURL}/${res.data.avatar}`
     }
-    
+
     // Загрузка статуса подписки для чужого профиля
     if (userId !== currentUserId && userId !== 'me') {
       await fetchSubscriptionStatus(profileUser.value.id);
     }
-    
+
     // Загрузка счетчиков подписчиков
     await fetchProfileCounts(userId);
   } catch (err) {
@@ -165,7 +165,7 @@ async function fetchProfile(userId) {
     userName.value = 'Не удалось загрузить профиль'
   } finally {
     loadingProfile.value = false
-    
+
   }
 }
 
@@ -199,7 +199,7 @@ async function fetchUserDraftProject() {
   try {
     const res = await api.get(`posts/me/drafts`)
     draftProjects.value = res.data.data || []
-   } catch (err) {
+  } catch (err) {
     console.error(err)
   } finally {
     loadingDraft.value = false
@@ -225,29 +225,33 @@ async function fetchLikedProjects() {
 }
 
 
-// 4) Fetch favorited projects
-async function fetchFavoritedProjects() {
+async function fetchFavoritedProjects(userId) {
   try {
-    const res = await api.get('/favorites', { params: { model: 'post', id: currentUserId }, headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
-    const favs = Array.isArray(res.data.favorite) ? res.data.favorite : []
-    const ids = favs.map(f => f.favoriteble_id)
-    if (!ids.length) { favoritedProjects.value = []; return }
-    const posts = await Promise.all(ids.map(id => api.get(`/posts/${id}`, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } }).then(r => r.data.data)))
-    favoritedProjects.value = await Promise.all(posts.map(async p => ({ ...p, likeCount: await fetchLikeCount(p.id) })))
-  } catch (err) {
-    console.error('Ошибка при загрузке избранного', err)
-    favoritedProjects.value = []
-  }
-}
+    const response = await api.get(`/favorites/${userId}`, {
+      params: { model: 'post' },
+      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
+    });
 
-// 5) Favorite status
-async function fetchFavoriteStatus(postId) {
-  try {
-    const res = await api.get('/favorites', { params: { model: 'post', id: postId }, headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
-    const arr = Array.isArray(res.data.favorite) ? res.data.favorite : []
-    userFavorited.value = arr.some(item => item.favoriteble_id === postId)
-  } catch {
-    userFavorited.value = false
+    const favoritedPosts = Array.isArray(response.data.favorite) ? response.data.favorite : [];
+
+    const ids = favoritedPosts.map(f => f.favoriteble_id); // используем entity_id
+    if (!ids.length) {
+      favoritedProjects.value = [];
+      return;
+    }
+
+    const posts = await Promise.all(ids.map(post_id =>
+      api.get(`/posts/${post_id}`, {
+      }).then(r => r.data.data)
+    ));
+
+    favoritedProjects.value = await Promise.all(posts.map(async p => ({
+      ...p,
+      likeCount: await fetchLikeCount(p.id)
+    })));
+  } catch (err) {
+    console.error('Ошибка при загрузке избранного', err);
+    favoritedProjects.value = [];
   }
 }
 
@@ -267,33 +271,65 @@ async function toggleLike() {
 
 // 7) Toggle favorite
 async function toggleFavorite() {
-  if (!selectedProject.value) return
-  const postId = selectedProject.value.id
+  if (!selectedProject.value) return;
+  const postId = selectedProject.value.id;
+
   try {
-    const headers = { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
-    if (userFavorited.value) await api.delete('/favorites/delete', { params: { model: 'post', id: postId }, headers })
-    else await api.post('/favorites/create', { favoriteble_type: 'post', favoriteble_id: postId }, { headers })
-    await fetchProjectModalData(postId)
-    await fetchFavoritedProjects()
+    const headers = { Authorization: `Bearer ${localStorage.getItem('access_token')}` };
+    if (userFavorited.value) {
+      // Удалить из избранного
+      await api.delete('/favorites/delete', {
+        params: {
+          model: 'post',
+          id: postId
+        }
+      });
+      userFavorited.value = false;
+    } else {
+      // Добавить в избранное
+      await api.post('/favorites/create', {
+        favoriteble_type: 'post',
+        favoriteble_id: postId
+      });
+      userFavorited.value = true;
+    }
+
+    // Обновляем список "Избранное"
+    await fetchFavoritedProjects(selectedUserId.value);
+
   } catch (err) {
-    console.error(err)
+    console.error('Ошибка при изменении избранного:', err);
+    alert('Не удалось изменить статус избранного');
   }
 }
 
 // Combined fetch for modal
 async function fetchProjectModalData(postId) {
-  loadingModal.value = true
-  likeCount.value = await fetchLikeCount(postId)
-  await Promise.all([fetchFavoriteStatus(postId), (async () => {
-    try {
-      const res = await api.get('/likes', { params: { model: 'post', id: postId }, headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
-      const arr = Array.isArray(res.data.like) ? res.data.like : []
-      userLiked.value = arr.some(item => item.likeble_id === postId)
-    } catch {
-      userLiked.value = false
-    }
-  })()])
-  loadingModal.value = false
+  loadingModal.value = true;
+  likeCount.value = await fetchLikeCount(postId);
+  try {
+    const res = await api.get('/likes', {
+      params: { model: 'post', id: postId },
+      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
+    });
+    const likes = Array.isArray(res.data.like) ? res.data.like : [];
+    userLiked.value = likes.some(item => item.likeble_id === postId);
+  } catch {
+    userLiked.value = false;
+  }
+
+  // Проверяем, есть ли пост в избранном
+  try {
+    const res = await api.get(`/favorites/${currentUserId}`, {
+      params: { model: 'post' },
+      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
+    });
+    const favorited = res.data.favorite || [];
+    userFavorited.value = favorited.some(fav => fav.favoriteble_id == postId);
+  } catch {
+    userFavorited.value = false;
+  }
+  loadingModal.value = false;
 }
 
 // Modal open/close
@@ -308,14 +344,14 @@ async function uploadBanner(file) {
   try {
     const formData = new FormData()
     formData.append('image', file)
-    
+
     const response = await api.post('/profile/banner', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
         Authorization: `Bearer ${localStorage.getItem('access_token')}`
       }
     })
-    
+
     console.log('Баннер успешно загружен:', response.data)
     // Обновляем профиль после успешной загрузки
     await fetchProfile(route.params.userId || currentUserId)
@@ -335,13 +371,13 @@ async function uploadAvatar(file) {
   try {
     const formData = new FormData()
     formData.append('image', file)
-    
+
     const response = await api.post('/profile/avatar', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       }
     })
-    
+
     console.log('Аватар успешно загружен:', response.data)
     // Обновляем профиль после успешной загрузки
     await fetchProfile(route.params.userId || currentUserId)
@@ -356,13 +392,13 @@ async function uploadAvatar(file) {
 }
 
 // Обработчики для баннера
-function triggerFileInput() { 
+function triggerFileInput() {
   if (isMyProfile.value) {
     fileInput.value?.click()
   }
 }
 
-function handleBannerUpload(e) { 
+function handleBannerUpload(e) {
   const file = e.target.files[0]
   if (file && file.type.startsWith('image/')) {
     // Показываем превью
@@ -372,21 +408,21 @@ function handleBannerUpload(e) {
   }
 }
 
-function onDragOver(e) { 
+function onDragOver(e) {
   if (isMyProfile.value) {
     e.preventDefault()
     isDragOver.value = true
   }
 }
 
-function onDragLeave(e) { 
+function onDragLeave(e) {
   if (isMyProfile.value) {
     e.preventDefault()
     isDragOver.value = false
   }
 }
 
-function onDrop(e) { 
+function onDrop(e) {
   if (isMyProfile.value) {
     e.preventDefault()
     isDragOver.value = false
@@ -425,6 +461,7 @@ watch(() => route.params.userId, async (newUserId) => {
     }
 
     await Promise.all([
+      fetchFavoritedProjects(newUserId),
       fetchProfile(newUserId),
       fetchUserProjects(newUserId),
       fetchLikedProjects(),
@@ -442,7 +479,10 @@ onMounted(async () => {
   }
   selectedUserId.value = userId;
   await fetchProfile(userId)
-  await Promise.all([fetchUserProjects(userId), fetchLikedProjects(), fetchFavoritedProjects()])
+  await Promise.all([
+    fetchUserProjects(userId),
+    fetchLikedProjects(),
+    fetchFavoritedProjects(userId)])
 })
 
 function changeTab(tab) { activeTab.value = tab }
@@ -457,15 +497,9 @@ const tabs = computed(() => {
 <template>
   <div class="profile-container">
     <!-- Banner -->
-    <div 
-      class="profile-banner" 
-      :class="{ 'drag-over': isDragOver, 'clickable': isMyProfile }" 
-      :style="{ backgroundImage: bannerImage ? `url(${bannerImage})` : '' }" 
-      @click="triggerFileInput" 
-      @dragover="onDragOver" 
-      @dragleave="onDragLeave" 
-      @drop="onDrop"
-    >
+    <div class="profile-banner" :class="{ 'drag-over': isDragOver, 'clickable': isMyProfile }"
+      :style="{ backgroundImage: bannerImage ? `url(${bannerImage})` : '' }" @click="triggerFileInput"
+      @dragover="onDragOver" @dragleave="onDragLeave" @drop="onDrop">
       <div v-if="!bannerImage && isMyProfile" class="banner-placeholder">
         <span>Добавить изображение баннера</span>
         <small>Оптимальные размеры 3200 x 410px</small>
@@ -474,40 +508,26 @@ const tabs = computed(() => {
         <div class="spinner"></div>
         <span>Загрузка баннера...</span>
       </div>
-      <input 
-        ref="fileInput" 
-        type="file" 
-        accept="image/*" 
-        @change="handleBannerUpload" 
-        class="banner-upload"
-      />
+      <input ref="fileInput" type="file" accept="image/*" @change="handleBannerUpload" class="banner-upload" />
     </div>
 
     <!-- Header -->
     <div class="profile-header">
       <div class="avatar-container" :class="{ 'clickable': isMyProfile }" @click="triggerAvatarInput">
-        <img 
-          class="avatar" 
-          :src="avatarImage || flowerImg" 
-          alt="Avatar"
-        />
+        <img class="avatar" :src="avatarImage || flowerImg" alt="Avatar" />
         <div v-if="isMyProfile" class="avatar-overlay">
           <span class="camera-icon">📷</span>
         </div>
         <div v-if="uploadingAvatar" class="avatar-upload-overlay">
           <div class="spinner small"></div>
         </div>
-        <input 
-          ref="avatarFileInput" 
-          type="file" 
-          accept="image/*" 
-          @change="handleAvatarUpload" 
-          class="avatar-upload"
-        />
+        <input ref="avatarFileInput" type="file" accept="image/*" @change="handleAvatarUpload" class="avatar-upload" />
       </div>
-      
+
       <div class="info">
-        <h2 v-if="loadingProfile"><div class="spinner"></div></h2>
+        <h2 v-if="loadingProfile">
+          <div class="spinner"></div>
+        </h2>
         <h2 v-else>{{ userName }}</h2>
         <p>Подписки: <b>{{ profileSubscriptionsCount }}</b> | Подписчики: <b>{{ profileSubscribersCount }}</b></p>
         <p class="views-counter"><span>👁️ Просмотры профиля: <b>{{ profileViews }}</b></span></p>
@@ -517,25 +537,17 @@ const tabs = computed(() => {
           <button class="edit">✏️ Редактировать профиль</button>
           <button class="setup">⚙️ Настроить профиль <span class="tag">artenify+</span></button>
         </div>
-        
+
         <!-- Кнопка подписки для чужого профиля -->
         <div v-else class="buttons">
-          <button 
-            v-if="!isSubscribed" 
-            @click="subscribeToUser(profileUser.id)"
-            class="subscribe-btn"
-          >
+          <button v-if="!isSubscribed" @click="subscribeToUser(profileUser.id)" class="subscribe-btn">
             Подписаться
           </button>
-          <button 
-            v-else 
-            @click="unsubscribeFromUser(profileUser.id)"
-            class="unsubscribe-btn"
-          >
+          <button v-else @click="unsubscribeFromUser(profileUser.id)" class="unsubscribe-btn">
             Отписаться
           </button>
         </div>
-        
+
 
         <p class="reg-date">{{ formattedRegDate }}</p>
       </div>
@@ -543,23 +555,19 @@ const tabs = computed(() => {
 
     <!-- Tabs -->
     <nav class="profile-tabs">
-      <span
-        v-for="tab in tabs"
-        :key="tab"
-        :class="{ active: activeTab === tab }"
-        @click="changeTab(tab)"
-      >
+      <span v-for="tab in tabs" :key="tab" :class="{ active: activeTab === tab }" @click="changeTab(tab)">
         {{ tab }}
       </span>
     </nav>
 
     <!-- Projects -->
-    <div v-if="activeTab==='Проекты'" class="projects">
+    <div v-if="activeTab === 'Проекты'" class="projects">
       <h3>Проекты</h3>
-      <div v-if="loadingProjects" class="spinner"/>
+      <div v-if="loadingProjects" class="spinner" />
       <div v-else class="project-grid">
         <div v-for="p in projects" :key="p.id" class="placeholder" @click="openModal(p)">
-          <img v-if="p.images?.length" :src="`${api.defaults.imageURL}/${p.images[0].path}`" :alt="p.title" class="placeholder-img"/>
+          <img v-if="p.images?.length" :src="`${api.defaults.imageURL}/${p.images[0].path}`" :alt="p.title"
+            class="placeholder-img" />
           <div v-else class="placeholder-img">Нет изображения</div>
           <div class="card-like-block">Лайки: {{ p.likeCount }}</div>
         </div>
@@ -567,11 +575,12 @@ const tabs = computed(() => {
     </div>
 
     <!-- Favorites -->
-    <div v-if="activeTab==='Избранное'" class="projects">
+    <div v-if="activeTab === 'Избранное'" class="projects">
       <h3>Избранное</h3>
       <div v-if="favoritedProjects.length" class="project-grid">
         <div v-for="p in favoritedProjects" :key="p.id" class="placeholder" @click="openModal(p)">
-          <img v-if="p.images?.length" :src="`${api.defaults.imageURL}/${p.images[0].path}`" :alt="p.title" class="placeholder-img"/>
+          <img v-if="p.images?.length" :src="`${api.defaults.imageURL}/${p.images[0].path}`" :alt="p.title"
+            class="placeholder-img" />
           <div v-else class="placeholder-img">Нет изображения</div>
           <div class="card-like-block">Лайки: {{ p.likeCount }}</div>
         </div>
@@ -580,13 +589,14 @@ const tabs = computed(() => {
     </div>
 
     <!-- Liked -->
-    <div v-if="activeTab==='Понравившееся'" class="projects">
+    <div v-if="activeTab === 'Понравившееся'" class="projects">
       <h3>Понравившиеся проекты</h3>
-      <div v-if="loadingLiked" class="spinner"/>
+      <div v-if="loadingLiked" class="spinner" />
       <div v-else>
         <div v-if="likedProjects.length" class="project-grid">
           <div v-for="p in likedProjects" :key="p.id" class="placeholder" @click="openModal(p)">
-            <img v-if="p.images?.length" :src="`${api.defaults.imageURL}/${p.images[0].path}`" :alt="p.title" class="placeholder-img"/>
+            <img v-if="p.images?.length" :src="`${api.defaults.imageURL}/${p.images[0].path}`" :alt="p.title"
+              class="placeholder-img" />
             <div v-else class="placeholder-img">Нет изображения</div>
             <div class="card-like-block">Лайки: {{ p.likeCount }}</div>
           </div>
@@ -596,18 +606,22 @@ const tabs = computed(() => {
     </div>
 
     <!-- Others Tabs... -->
-    <div v-if="activeTab==='Продвижение+'" class="projects"><h3>Продвижение+</h3><div class="tab-content">Продвижение в разработке</div></div>
-    <AnalyticsTab v-if="activeTab==='Статистика'" />
-    <div v-if="activeTab==='Черновики' && selectedUserId === currentUserId" class="projects">
+    <div v-if="activeTab === 'Продвижение+'" class="projects">
+      <h3>Продвижение+</h3>
+      <div class="tab-content">Продвижение в разработке</div>
+    </div>
+    <AnalyticsTab v-if="activeTab === 'Статистика'" />
+    <div v-if="activeTab === 'Черновики' && selectedUserId === currentUserId" class="projects">
       <h3>Черновики</h3>
-      <div v-if="loadingDraft" class="spinner"/>
+      <div v-if="loadingDraft" class="spinner" />
       <div v-else>
         <div v-if="draftProjects.length" class="project-grid">
-            <div v-for="p in draftProjects" :key="p.id" class="placeholder" @click="openModal(p)">
-              <img v-if="p.images?.length" :src="`${api.defaults.imageURL}/${p.images[0].path}`" :alt="p.title" class="placeholder-img"/>
-              <div v-else class="placeholder-img">Нет изображения</div>
-            </div>
+          <div v-for="p in draftProjects" :key="p.id" class="placeholder" @click="openModal(p)">
+            <img v-if="p.images?.length" :src="`${api.defaults.imageURL}/${p.images[0].path}`" :alt="p.title"
+              class="placeholder-img" />
+            <div v-else class="placeholder-img">Нет изображения</div>
           </div>
+        </div>
         <div v-else class="tab-content">Черновиков пока нет</div>
       </div>
     </div>
@@ -615,18 +629,25 @@ const tabs = computed(() => {
     <!-- Modal -->
     <div v-if="selectedProject" class="modal-overlay" @click.self="closeModal">
       <div class="modal-content">
-        <button v-if="activeTab != 'Черновики'" class="favorite-btn-top-left" @click="toggleFavorite">
+        <button v-if="activeTab !== 'Черновики'" class="favorite-btn-top-left" @click="toggleFavorite">
           <span v-if="userFavorited">⭐</span><span v-else>☆</span>
         </button>
-        <img v-if="selectedProject.images?.length" :src="`${api.defaults.imageURL}/${selectedProject.images[0].path}`" :alt="selectedProject.title" class="modal-img"/>
+
+        <img v-if="selectedProject.images?.length" :src="`${api.defaults.imageURL}/${selectedProject.images[0].path}`"
+          :alt="selectedProject.title" class="modal-img" />
+
         <h2 class="modal-title">{{ selectedProject.title }}</h2>
         <p class="modal-description">{{ selectedProject.description || 'Нет описания' }}</p>
-        <div class="like-block">
-          <button class="like-btn" @click="toggleLike"><span v-if="userLiked">❤️</span><span v-else>🤍</span></button>
+
+        <!-- Исправленный блок лайков (без дублирования) -->
+        <div v-if="activeTab !== 'Черновики'" class="like-block">
+          <button class="like-btn" @click="toggleLike">
+            <span v-if="userLiked">❤️</span>
+            <span v-else>🤍</span>
+          </button>
           <span class="like-count">{{ likeCount }}</span>
-          <button v-if="activeTab != 'Черновики'" class="like-btn" @click="toggleLike"><span v-if="userLiked">❤️</span><span v-else>🤍</span></button>
-          <span v-if="activeTab != 'Черновики'" class="like-count">{{ likeCount }}</span>
         </div>
+
         <button class="modal-close" @click="closeModal">Закрыть</button>
       </div>
     </div>
@@ -661,7 +682,9 @@ const tabs = computed(() => {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .profile-banner {
@@ -964,6 +987,7 @@ const tabs = computed(() => {
   cursor: pointer;
   padding: 0;
 }
+
 .subscribe-btn {
   background: #4CAF50;
   color: white;

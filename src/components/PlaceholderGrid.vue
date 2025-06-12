@@ -1,10 +1,14 @@
 <script setup>
-import { defineProps, ref, watch } from 'vue'
+import { defineProps, ref, watch, computed } from 'vue'
 import api from '@/axios.js'
 import { useRouter } from 'vue-router'
+import { useStore } from 'vuex'
 import PostCard from '@/components/PostCard.vue'
 
 const router = useRouter()
+const store = useStore()
+
+const currentUser = computed(() => store.getters.user)
 
 // Получаем список проектов
 const props = defineProps({
@@ -71,16 +75,25 @@ function goToOwnerProfile(id) {
 }
 
 // Статус избранного
-async function fetchFavoriteStatus(postId) {
-  try {
-    const res = await api.get('favorites/status', {
-      params: { model: 'post', id: postId },
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
-    })
-    userFavorited.value = res.data.favorited
-  } catch (e) {
+async function fetchFavoriteStatus(userId) {
+  const token = localStorage.getItem('access_token')
+  if (!token) {
     userFavorited.value = false
-    console.error('Ошибка fetchFavoriteStatus', e)
+    return
+  }
+
+  try {
+    const response = await api.get(`/favorites/${userId}`, {
+      params: { model: 'post' },
+    })
+
+    const favoritedPosts = response.data.favorite || [];
+
+    userFavorited.value = favoritedPosts.some(fav => fav.favoriteble_id == selectedProject.value.id);
+  
+  } catch (e) {
+    console.error('Ошибка fetchFavoriteStatus:', e)
+    userFavorited.value = false
   }
 }
 
@@ -100,27 +113,31 @@ async function toggleFavorite() {
   if (!selectedProject.value) return
   const postId = selectedProject.value.id
   const token = localStorage.getItem('access_token')
+  if (!token) return
 
   try {
     if (userFavorited.value) {
-      await api.delete('favorites/delete', {
-        params: { model: 'post', id: postId },
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`
+      // Удалить из избранного
+      await api.delete('/favorites/delete', {
+        params: {
+          model: 'post',
+          id: postId
         }
-      })
+      });
+      userFavorited.value = false;
     } else {
-      await api.post(
-        'favorites/create',
-        { favoriteble_type: 'post', favoriteble_id: postId },
-        { headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': `Bearer ${token}` } }
-      )
+      // Добавить в избранное
+      await api.post('/favorites/create', {
+        favoriteble_type: 'post',
+        favoriteble_id: postId
+      });
+      userFavorited.value = true;
     }
-    await fetchFavoriteStatus(postId)
+
+    // Обновляем статус после изменения
+    await fetchFavoriteStatus(currentUser.value.id)
   } catch (e) {
-    console.error('Ошибка toggleFavorite', e)
+    console.error('Ошибка при изменении избранного:', e)
   }
 }
 
@@ -130,7 +147,7 @@ function openModal(project) {
   countViewsPost(project.id)
   getOwnerPost(project.user_id)
   fetchLikes(project.id)
-  fetchFavoriteStatus(project.id)
+  fetchFavoriteStatus(currentUser.value.id)
 }
 function closeModal() {
   selectedProject.value = null
