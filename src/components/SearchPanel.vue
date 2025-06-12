@@ -13,6 +13,7 @@
           <div class="filter-section">
             <label class="filter-label">Категория</label>
             <select v-model="selectedCategory" class="filter-select">
+
             <option value="">Нет</option>
             <option
               v-for="cat in categoryList"
@@ -47,6 +48,7 @@
           </div>
         </div>
       </transition>
+
     </div>
 
     <!-- Поиск -->
@@ -85,6 +87,7 @@ import { ref, computed, watch } from 'vue'
 const props = defineProps({
   availableTags: { type: Object, default: () => ({ tags: [] }) },
   availableCategories: { type: Object, default: () => ({ categories: [] }) }
+
 })
 const emit = defineEmits(['filter-changed', 'image-search'])
 
@@ -95,11 +98,10 @@ const selectedTags = ref([])
 const selectedCategory = ref('')
 const sortType = ref('recommended')
 
-// UI
 const showFilterMenu = ref(false)
 const showSortMenu = ref(false)
 
-// Данные
+
 const categoryList = computed(() => props.availableCategories.categories || [])
 const tagsArray = computed(() => props.availableTags.tags || [])
 
@@ -115,6 +117,7 @@ const sortLabel = computed(() => ({
   latest: 'По дате (новые)',
   oldest: 'По дате (старые)'
 }[sortType.value]))
+
 
 const filterData = computed(() => ({
   search: searchQuery.value,
@@ -133,15 +136,14 @@ function applySort(type) {
   sortType.value = type
   showSortMenu.value = false
 }
-</script>
 
+</script>
 
 <style scoped>
 .search-panel {
   position: sticky;
-  margin-top: 870px;
-  top: 65px;
-  width: 100vw;
+  margin-top: 80vh;
+
   min-height: 67px;
   background: white;
   display: flex;

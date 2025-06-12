@@ -206,15 +206,17 @@ watch(selectedProject, p => {
   position: relative;
   width: 100%;
   background: white;
-  padding: 20px 0;
+  padding: 10px 0;
 }
 
 .grid-container {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 55px 20px;
-  max-width: 1920px;
+  gap: 15px 20px;
+  width: 100vw;
   margin: 0 auto;
+  padding: 10px 6px;
+  margin: 24px;
 }
 
 .placeholder {
