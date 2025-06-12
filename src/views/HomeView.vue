@@ -33,6 +33,7 @@
         class="placeholder-grid-wrapper"
         :displayedProjects="projects"
         :loading="isLoading"
+        @open-modal="openProjectModal"
       />
 
       <!-- Плейсхолдеры (скрыты на мобильной) -->
@@ -61,6 +62,13 @@
         <p>Проекты не найдены</p>
         <p>Попробуйте изменить критерии поиска или фильтры</p>
       </div>
+
+      <!-- Модальное окно проекта -->
+      <ProjectModal 
+        :isVisible="isModalOpen"
+        :project="selectedProject"
+        @close="closeProjectModal"
+      />
     </div>
   </main>
 </template>
@@ -71,18 +79,23 @@ import axios from 'axios'
 import { useRouter } from 'vue-router'
 import SearchPanel from '@/components/SearchPanel.vue'
 import PlaceholderGrid from '@/components/PlaceholderGrid.vue'
+import ProjectModal from '@/components/ProjectModal.vue' // Импортируем модалку
 
 const router = useRouter()
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost/api/v1'
 
-const projects      = ref([])
-const isLoading     = ref(false)
+const projects = ref([])
+const isLoading = ref(false)
 const availableTags = ref([])
 const availableCategories = ref([])
 
+// Состояния для управления модалкой
+const isModalOpen = ref(false)
+const selectedProject = ref(null)
+
 onMounted(async () => {
   try {
-    const res  = await axios.get(`${API_BASE_URL}/tags`)
+    const res = await axios.get(`${API_BASE_URL}/tags`)
     availableTags.value = res.data || []
     const res2 = await axios.get(`${API_BASE_URL}/categories`)
     availableCategories.value = res2.data || []
@@ -105,10 +118,10 @@ async function loadProjects(page = 1) {
   try {
     const params = {
       page,
-      ...(filters.value.search    && { search: filters.value.search }),
+      ...(filters.value.search && { search: filters.value.search }),
       ...(filters.value.sort !== 'recommended' && { sort: filters.value.sort }),
       ...(filters.value.tags.length && { tags: filters.value.tags.join(',') }),
-      ...(filters.value.category     && { category: filters.value.category })
+      ...(filters.value.category && { category: filters.value.category })
     }
     const { data } = await axios.get(`${API_BASE_URL}/posts`, { params })
     projects.value = page === 1
@@ -124,15 +137,26 @@ async function loadProjects(page = 1) {
 onMounted(() => loadProjects())
 
 function onFilterChanged({ search, sort, tags, category }) {
-  filters.value.search   = search   ?? ''
-  filters.value.sort     = sort     ?? 'recommended'
-  filters.value.tags     = tags     ?? []
+  filters.value.search = search ?? ''
+  filters.value.sort = sort ?? 'recommended'
+  filters.value.tags = tags ?? []
   filters.value.category = category ?? ''
   loadProjects(1)
 }
 
 function onImageSearch() {
   console.log('Image search triggered')
+}
+
+// Функции для управления модалкой
+function openProjectModal(project) {
+  selectedProject.value = project
+  isModalOpen.value = true
+}
+
+function closeProjectModal() {
+  isModalOpen.value = false
+  selectedProject.value = null
 }
 </script>
 
