@@ -84,6 +84,17 @@ async function fetchFavoriteStatus(postId) {
   }
 }
 
+async function countViewsPost(postId) {
+  try {
+    const res = await api.get(`posts/count/${postId}`, {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+    })
+  } catch (e) {
+    userFavorited.value = false
+    console.error('Ошибка fetchFavoriteStatus', e)
+  }
+}
+
 // Переключение избранного
 async function toggleFavorite() {
   if (!selectedProject.value) return
@@ -116,6 +127,7 @@ async function toggleFavorite() {
 // Открытие/закрытие модалки
 function openModal(project) {
   selectedProject.value = project
+  countViewsPost(project.id)
   getOwnerPost(project.user_id)
   fetchLikes(project.id)
   fetchFavoriteStatus(project.id)
@@ -191,6 +203,9 @@ watch(selectedProject, p => {
             <span v-else>🤍</span>
           </button>
           <span class="like-count">{{ likeCount }}</span>
+        </div>
+        <div>
+          <span class="like-count">👁️ {{ selectedProject.views }}</span>
         </div>
 
         <button class="modal-close" @click="closeModal">Закрыть</button>
