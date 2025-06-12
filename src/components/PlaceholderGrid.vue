@@ -178,7 +178,7 @@ watch(selectedProject, p => {
         <div class="owner-block">
           <img
             v-if="ownerPost?.avatar"
-            :src="ownerPost.avatar"
+            :src="`${api.defaults.imageURL}/${ownerPost.avatar}`"
             class="owner-avatar"
             @click="goToOwnerProfile(ownerPost.id)"
           />

@@ -44,6 +44,12 @@ const bannerImage = ref(null)
 const isDragOver = ref(false)
 const fileInput = ref(null)
 
+// Avatar upload state (новое)
+const avatarImage = ref(null)
+const avatarFileInput = ref(null)
+const uploadingBanner = ref(false)
+const uploadingAvatar = ref(false)
+
 // Current user
 const currentUser = store.getters.user || JSON.parse(localStorage.getItem('user'))
 const currentUserId = currentUser?.id
@@ -70,11 +76,20 @@ async function fetchProfile(userId) {
     userName.value = res.data.name
     userCreated.value = res.data.created_at || res.data.createdAt || res.data.createdAt
     profileViews.value = res.data.views ?? 0
+    
+    if (res.data.banner) {
+      bannerImage.value = `${api.defaults.imageURL}/${res.data.banner}`
+    }
+    if (res.data.avatar) {
+      avatarImage.value = `${api.defaults.imageURL}/${res.data.avatar}`
+    }
+    
   } catch (err) {
     console.error('Ошибка при загрузке профиля:', err)
     userName.value = 'Не удалось загрузить профиль'
   } finally {
     loadingProfile.value = false
+    
   }
 }
 
@@ -210,6 +225,123 @@ async function fetchSubscribersCount() {
 function openModal(p) { selectedProject.value = p; fetchProjectModalData(p.id) }
 function closeModal() { selectedProject.value = null }
 
+// === НОВЫЕ ФУНКЦИИ ДЛЯ ЗАГРУЗКИ ИЗОБРАЖЕНИЙ ===
+
+// Загрузка баннера
+async function uploadBanner(file) {
+  uploadingBanner.value = true
+  try {
+    const formData = new FormData()
+    formData.append('image', file)
+    
+    const response = await api.post('/profile/banner', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        Authorization: `Bearer ${localStorage.getItem('access_token')}`
+      }
+    })
+    
+    console.log('Баннер успешно загружен:', response.data)
+    // Обновляем профиль после успешной загрузки
+    await fetchProfile(route.params.userId || currentUserId)
+  } catch (error) {
+    console.error('Ошибка при загрузке баннера:', error)
+    alert('Ошибка при загрузке баннера')
+  } finally {
+    uploadingBanner.value = false
+    currentUser.banner = bannerImage
+    store.commit('setUser', currentUser)
+  }
+}
+
+// Загрузка аватарки
+async function uploadAvatar(file) {
+  uploadingAvatar.value = true
+  try {
+    const formData = new FormData()
+    formData.append('image', file)
+    
+    const response = await api.post('/profile/avatar', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      }
+    })
+    
+    console.log('Аватар успешно загружен:', response.data)
+    // Обновляем профиль после успешной загрузки
+    await fetchProfile(route.params.userId || currentUserId)
+  } catch (error) {
+    console.error('Ошибка при загрузке аватара:', error)
+    alert('Ошибка при загрузке аватара')
+  } finally {
+    currentUser.avatar = avatarImage
+    store.commit('setUser', currentUser)
+    uploadingAvatar.value = false
+  }
+}
+
+// Обработчики для баннера
+function triggerFileInput() { 
+  if (isMyProfile.value) {
+    fileInput.value?.click()
+  }
+}
+
+function handleBannerUpload(e) { 
+  const file = e.target.files[0]
+  if (file && file.type.startsWith('image/')) {
+    // Показываем превью
+    bannerImage.value = URL.createObjectURL(file)
+    // Загружаем на сервер
+    uploadBanner(file)
+  }
+}
+
+function onDragOver(e) { 
+  if (isMyProfile.value) {
+    e.preventDefault()
+    isDragOver.value = true
+  }
+}
+
+function onDragLeave(e) { 
+  if (isMyProfile.value) {
+    e.preventDefault()
+    isDragOver.value = false
+  }
+}
+
+function onDrop(e) { 
+  if (isMyProfile.value) {
+    e.preventDefault()
+    isDragOver.value = false
+    const file = e.dataTransfer.files[0]
+    if (file && file.type.startsWith('image/')) {
+      // Показываем превью
+      bannerImage.value = URL.createObjectURL(file)
+      // Загружаем на сервер
+      uploadBanner(file)
+    }
+  }
+}
+
+// Обработчики для аватара
+function triggerAvatarInput() {
+  if (isMyProfile.value) {
+    avatarFileInput.value?.click()
+  }
+}
+
+function handleAvatarUpload(e) {
+  const file = e.target.files[0]
+  if (file && file.type.startsWith('image/')) {
+    // Показываем превью
+    avatarImage.value = URL.createObjectURL(file)
+    // Загружаем на сервер
+    uploadAvatar(file)
+  }
+}
+
 watch(() => route.params.userId, async (newUserId) => {
   if (newUserId) {
     await fetchProfile(newUserId);
@@ -232,39 +364,75 @@ onMounted(async () => {
 })
 
 function changeTab(tab) { activeTab.value = tab }
-function triggerFileInput() { fileInput.value?.click() }
-function handleBannerUpload(e) { const f = e.target.files[0]; if (f) bannerImage.value = URL.createObjectURL(f) }
-function onDragOver() { isDragOver.value = true }
-function onDragLeave() { isDragOver.value = false }
-function onDrop(e) { isDragOver.value = false; const f = e.dataTransfer.files[0]; if (f?.type.startsWith('image/')) bannerImage.value = URL.createObjectURL(f) }
 
 const tabs = computed(() => {
   const publicTabs = ['Проекты', 'Статистика']
   const privateTabs = ['Избранное', 'Понравившееся', 'Продвижение+', 'Черновики']
   return isMyProfile.value ? [...publicTabs, ...privateTabs] : publicTabs
 })
-
-
-
 </script>
 
 <template>
   <div class="profile-container">
     <!-- Banner -->
-    <div class="profile-banner" :class="{ 'drag-over': isDragOver }" :style="{ backgroundImage: bannerImage ? 'url(' + bannerImage + ')' : '' }" @click="triggerFileInput" @dragover.prevent="onDragOver" @dragleave.prevent="onDragLeave" @drop.prevent="onDrop">
-      <div v-if="!bannerImage" class="banner-placeholder"><span>Добавить изображение баннера</span><small>Оптимальные размеры 3200 x 410px</small></div>
-      <input ref="fileInput" type="file" accept="image/*" @change="handleBannerUpload" class="banner-upload"/>
+    <div 
+      class="profile-banner" 
+      :class="{ 'drag-over': isDragOver, 'clickable': isMyProfile }" 
+      :style="{ backgroundImage: bannerImage ? `url(${bannerImage})` : '' }" 
+      @click="triggerFileInput" 
+      @dragover="onDragOver" 
+      @dragleave="onDragLeave" 
+      @drop="onDrop"
+    >
+      <div v-if="!bannerImage && isMyProfile" class="banner-placeholder">
+        <span>Добавить изображение баннера</span>
+        <small>Оптимальные размеры 3200 x 410px</small>
+      </div>
+      <div v-if="uploadingBanner" class="upload-overlay">
+        <div class="spinner"></div>
+        <span>Загрузка баннера...</span>
+      </div>
+      <input 
+        ref="fileInput" 
+        type="file" 
+        accept="image/*" 
+        @change="handleBannerUpload" 
+        class="banner-upload"
+      />
     </div>
 
     <!-- Header -->
     <div class="profile-header">
-      <img class="avatar" :src="flowerImg" alt="Avatar"/>
+      <div class="avatar-container" :class="{ 'clickable': isMyProfile }" @click="triggerAvatarInput">
+        <img 
+          class="avatar" 
+          :src="avatarImage || flowerImg" 
+          alt="Avatar"
+        />
+        <div v-if="isMyProfile" class="avatar-overlay">
+          <span class="camera-icon">📷</span>
+        </div>
+        <div v-if="uploadingAvatar" class="avatar-upload-overlay">
+          <div class="spinner small"></div>
+        </div>
+        <input 
+          ref="avatarFileInput" 
+          type="file" 
+          accept="image/*" 
+          @change="handleAvatarUpload" 
+          class="avatar-upload"
+        />
+      </div>
+      
       <div class="info">
         <h2 v-if="loadingProfile"><div class="spinner"></div></h2>
         <h2 v-else>{{ userName }}</h2>
         <p>Подписки: <b>{{ subscriptionsCount }}</b> | Подписчики: <b>{{ subscribersCount }}</b></p>
         <p class="views-counter"><span>👁️ Просмотры профиля: <b>{{ profileViews }}</b></span></p>
-        <div v-if="isMyProfile" class="buttons"><button class="edit">✏️ Редактировать профиль</button><button class="setup">⚙️ Настроить профиль <span class="tag">artenify+</span></button></div>
+        <div v-if="isMyProfile" class="buttons">
+          <button class="edit">✏️ Редактировать профиль</button>
+          <button class="setup">⚙️ Настроить профиль <span class="tag">artenify+</span></button>
+        </div>
         <p class="reg-date">{{ formattedRegDate }}</p>
       </div>
     </div>
@@ -280,7 +448,6 @@ const tabs = computed(() => {
         {{ tab }}
       </span>
     </nav>
-
 
     <!-- Projects -->
     <div v-if="activeTab==='Проекты'" class="projects">
@@ -339,7 +506,7 @@ const tabs = computed(() => {
         <h2 class="modal-title">{{ selectedProject.title }}</h2>
         <p class="modal-description">{{ selectedProject.description || 'Нет описания' }}</p>
         <div class="like-block">
-          <button class="like-btn" @click="toggleLike"><span v-if="userLiked">❤️</span><span v-else>🤍</span></button>
+          <button class="like-btn" @click="toggleLike"><span v-if="userLiked">❤️</span><span v-else">🤍</span></button>
           <span class="like-count">{{ likeCount }}</span>
         </div>
         <button class="modal-close" @click="closeModal">Закрыть</button>
@@ -347,7 +514,6 @@ const tabs = computed(() => {
     </div>
   </div>
 </template>
-
 
 <style scoped>
 .profile-container {
@@ -368,6 +534,14 @@ const tabs = computed(() => {
   animation: spin 1s linear infinite;
   margin: 20px auto;
 }
+
+.spinner.small {
+  width: 20px;
+  height: 20px;
+  border-width: 2px;
+  margin: 0;
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
@@ -383,13 +557,18 @@ const tabs = computed(() => {
   padding: 0 5vw;
   box-sizing: border-box;
   position: relative;
-  cursor: pointer;
   user-select: none;
   transition: background-color 0.3s;
+  background-size: cover;
+  background-position: center;
+}
+
+.profile-banner.clickable {
+  cursor: pointer;
 }
 
 .profile-banner.drag-over {
-  background-color: rgba(255 255 255 / 0.1);
+  background-color: rgba(255, 255, 255, 0.1);
   border: 2px dashed #a32aa1;
 }
 
@@ -408,10 +587,34 @@ const tabs = computed(() => {
   display: none;
 }
 
+.upload-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  gap: 10px;
+}
+
 .profile-header {
   display: flex;
   padding: 1rem 5vw;
   align-items: flex-start;
+}
+
+.avatar-container {
+  position: relative;
+  margin-right: 1.5rem;
+}
+
+.avatar-container.clickable {
+  cursor: pointer;
 }
 
 .avatar {
@@ -419,7 +622,48 @@ const tabs = computed(() => {
   height: 96px;
   border-radius: 50%;
   object-fit: cover;
-  margin-right: 1.5rem;
+  transition: opacity 0.3s;
+}
+
+.avatar-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.avatar-container:hover .avatar-overlay {
+  opacity: 1;
+}
+
+.camera-icon {
+  font-size: 24px;
+  color: white;
+}
+
+.avatar-upload {
+  display: none;
+}
+
+.avatar-upload-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .info h2 {
@@ -617,6 +861,7 @@ const tabs = computed(() => {
   border-radius: 8px;
   cursor: pointer;
 }
+
 .favorite-btn-top-left {
   position: absolute;
   top: 16px;
@@ -627,8 +872,14 @@ const tabs = computed(() => {
   cursor: pointer;
   z-index: 10;
 }
+
 .favorite-btn-top-left:hover {
   transform: scale(1.1);
 }
 
+.tab-content {
+  text-align: center;
+  color: #666;
+  padding: 2rem;
+}
 </style>
