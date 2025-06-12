@@ -92,12 +92,15 @@ async function loadProjects(page = 1) {
   isLoading.value = true
 
   try {
+    
     const params = {
       page,
       ...(filters.value.search && { search: filters.value.search }),
       ...(filters.value.sort !== 'recommended' && { sort: filters.value.sort }),
-      ...(filters.value.tags.length && { tags: filters.value.tags.join(',') })
+      ...(filters.value.tags.length && { tags: filters.value.tags.join(',') }),
+      ...(filters.value.category) && { category: filters.value.category }
     }
+    console.log(params)
     const { data } = await axios.get(`${API_BASE_URL}/posts`, { params })
     projects.value = page === 1
       ? data.data || []
@@ -111,10 +114,11 @@ async function loadProjects(page = 1) {
 
 onMounted(() => loadProjects())
 
-function onFilterChanged({ search, sort, tags }) {
+function onFilterChanged({ search, sort, tags , category}) {
   filters.value.search = search ?? ''
   filters.value.sort   = sort   ?? 'recommended'
   filters.value.tags   = tags   ?? []
+  filters.value.category = category ?? ''
   loadProjects(1)
 }
 
