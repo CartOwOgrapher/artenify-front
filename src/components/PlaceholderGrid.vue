@@ -2,6 +2,7 @@
 import { defineProps, ref, watch } from 'vue'
 import api from '@/axios.js'
 import { useRouter } from 'vue-router'
+import PostCard from '@/components/PostCard.vue'
 
 const router = useRouter()
 
@@ -100,7 +101,8 @@ async function toggleFavorite() {
         }
       })
     } else {
-      await api.post('favorites/create',
+      await api.post(
+        'favorites/create',
         { favoriteble_type: 'post', favoriteble_id: postId },
         { headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': `Bearer ${token}` } }
       )
@@ -135,24 +137,22 @@ watch(selectedProject, p => {
 
 <template>
   <div class="grid-wrapper" :style="{ zIndex: selectedProject ? 555 : 12 }">
-    <div class="grid-container">
-      <div
-        v-for="(project, index) in displayedProjects"
-        :key="project.id + '-' + index"
-        class="placeholder"
-        @click="openModal(project)"
-      >
-        <img
-          v-if="project.images?.length"
-          :src="`${api.defaults.imageURL}/${project.images[0].path}`"
-          :alt="project.title"
-          class="placeholder-img"
-        />
-        <div v-else class="placeholder-img">Нет изображения</div>
-        <div class="card-like-block">Лайки: {{ project.likes }}</div>
-      </div>
+    <!-- 1) Сообщение, если нет результатов -->
+    <div v-if="!displayedProjects.length" class="no-results">
+      <p>Ой-ой-ой, ничего не нашли по этим тегам... 😥</p>
     </div>
 
+    <!-- 2) Сетка постов -->
+    <div v-else class="grid-container">
+      <PostCard
+        v-for="(project, index) in displayedProjects"
+        :key="project.id + '-' + index"
+        :project="project"
+        :onClick="openModal"
+      />
+    </div>
+
+    <!-- Модалка -->
     <div v-if="selectedProject" class="modal-overlay" @click.self="closeModal">
       <div class="modal-content">
         <div class="favorite-block">
@@ -199,8 +199,6 @@ watch(selectedProject, p => {
   </div>
 </template>
 
-
-
 <style scoped>
 .grid-wrapper {
   position: relative;
@@ -214,22 +212,25 @@ watch(selectedProject, p => {
   grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   gap: 15px 20px;
   width: 100vw;
-  margin: 0 auto;
+  margin: 24px auto;
   padding: 10px 6px;
-  margin: 24px;
 }
 
-.placeholder {
-  position: relative;
-  width: 350px; height: 300px;
-  background-color: #ddd;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: 7px; overflow: hidden; cursor: pointer;
-  transition: transform 0.2s ease;
+/* Новая плашка для "нет результатов" */
+.no-results {
+  width: 100%;
+  padding: 100px 0;
+  background-color: white;
+  color: #333;
+  text-align: center;
+  font-size: 20px;
+  font-weight: 500;
 }
-.placeholder:hover { transform: scale(1.02) }
 
-.placeholder-img { width: 100%; height: 100%; object-fit: cover; }
+/* Остальной CSS для модалки и элементов */
+.placeholder { /* перенесено в PostCard.vue */ }
+.placeholder-img { /* перенесено в PostCard.vue */ }
+.card-like-block { /* перенесено в PostCard.vue */ }
 
 .modal-overlay {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -273,6 +274,7 @@ watch(selectedProject, p => {
   background: #333; color: white; border: none;
   border-radius: 8px; cursor: pointer;
 }
+
 .favorite-block {
   position: absolute;
   left: 20px;
@@ -286,16 +288,6 @@ watch(selectedProject, p => {
   cursor: pointer;
 }
 
-.card-like-block {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  background: rgba(0, 0, 0, 0.4);
-  color: #fff;
-  padding: 4px 8px;
-  font-size: 12px;
-}
-
 .modal-img-wrapper {
   position: relative;
   display: inline-block;
@@ -307,26 +299,18 @@ watch(selectedProject, p => {
 
 .modal-hover-title {
   position: absolute;
-  top: 50%;
-  left: 50%;
+  top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  color: white;
-  font-size: 24px;
-  font-weight: 600;
-  text-align: center;
-  padding: 10px 20px;
+  color: white; font-size: 24px; font-weight: 600;
+  text-align: center; padding: 10px 20px;
   background-color: rgba(0, 0, 0, 0.6);
-  border-radius: 10px;
-  opacity: 0;
+  border-radius: 10px; opacity: 0;
   pointer-events: none;
   transition: opacity 0.3s ease;
-  user-select: none;
   white-space: nowrap;
 }
 
 .modal-img-wrapper:hover .modal-hover-title {
-  opacity: 1;
-  pointer-events: auto;
+  opacity: 1; pointer-events: auto;
 }
-
 </style>
