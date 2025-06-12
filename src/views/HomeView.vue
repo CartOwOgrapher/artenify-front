@@ -232,7 +232,7 @@ function onImageSearch() {
 @media (max-width: 1200px) {
   .logo-container {
     position: relative;
-    top: -900px;
+    top: -1300px;
     left: auto;
     transform: none;
     margin: 0 auto 20px;
@@ -244,7 +244,7 @@ function onImageSearch() {
     display: flex;
     flex-wrap: wrap;
     left: auto;
-    top: -900px;
+    top: -1300px;
     gap: 11px;
  
     margin: 45px;

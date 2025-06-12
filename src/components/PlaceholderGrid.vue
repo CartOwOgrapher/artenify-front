@@ -213,7 +213,7 @@ watch(selectedProject, p => {
   gap: 15px 20px;
   width: 100vw;
   margin: 24px auto;
-  padding: 10px 6px;
+  padding: 10px 30px;
 }
 
 /* Новая плашка для "нет результатов" */
