@@ -64,6 +64,12 @@ const isMyProfile = ref(false)
 // Subscription state
 const isSubscribed = ref(false)
 
+const comments = ref([])
+const newCommentText = ref('')
+const replyText = ref('')
+const replyingTo = ref(null)
+const loadingComments = ref(false)
+
 // Utils
 async function fetchLikeCount(postId) {
   try {
@@ -390,7 +396,152 @@ async function uploadAvatar(file) {
     uploadingAvatar.value = false
   }
 }
+const usersCache = ref({}); 
 
+async function getUserInfo(userId) {
+  if (usersCache.value[userId]) {
+    return usersCache.value[userId];
+  }
+
+  try {
+    const res = await api.get(`/profile/user/${userId}`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('access_token')}`
+      }
+    });
+
+    if (!res.data || !res.data.name) {
+      throw new Error('Некорректные данные пользователя');
+    }
+
+    const userData = {
+      id: userId,
+      name: res.data.name,
+      avatar: res.data.avatar
+        ? `${api.defaults.imageURL}/${res.data.avatar}`
+        : flowerImg
+    };
+
+    usersCache.value[userId] = userData;
+    return userData;
+  } catch (err) {
+    console.error(`Ошибка загрузки пользователя ${userId}`, err);
+    return {
+      id: userId,
+      name: 'Неизвестный пользователь',
+      avatar: flowerImg
+    };
+  }
+}
+
+async function fetchComments(userId) {
+  loadingComments.value = true;
+
+  try {
+    const res = await api.get('/comments', {
+      params: { model: 'user', id: userId }
+    });
+
+    const flatComments = res.data.comments || [];
+
+    const userIds = new Set(flatComments.map(c => c.comment_owner));
+    const userList = await Promise.all([...userIds].map(id => getUserInfo(id)));
+
+    const userMap = {};
+    userList.forEach(user => { userMap[user.id] = user; });
+
+    const enriched = flatComments.map(comment => {
+      const isDeleted = comment.deleted;
+      const owner = userMap[comment.comment_owner];
+
+      return {
+        ...comment,
+        comment_owner: isDeleted
+          ? { id: comment.comment_owner, name: 'Удалено', avatar: flowerImg }
+          : (owner || { id: comment.comment_owner, name: 'Неизвестный', avatar: flowerImg }),
+        content: isDeleted ? 'Комментарий удалён' : comment.content,
+        replies: [],
+        reply_to: null
+      };
+    });
+
+    const commentMap = {};
+    enriched.forEach(c => { commentMap[c.id] = c; });
+
+    const tree = [];
+    enriched.forEach(comment => {
+      if (comment.parent_comment) {
+        const parent = commentMap[comment.parent_comment];
+        if (parent) {
+          comment.reply_to = parent.comment_owner.name;
+          parent.replies.push(comment);
+        } else {
+          tree.push(comment); // если не найден родитель, выводим как самостоятельный
+        }
+      } else {
+        tree.push(comment);
+      }
+    });
+
+    comments.value = tree;
+  } catch (err) {
+    console.error('Ошибка загрузки комментариев', err);
+    comments.value = [];
+  } finally {
+    loadingComments.value = false;
+  }
+}
+
+// Функция создания комментария
+async function postComment() {
+  if (!newCommentText.value.trim()) return
+  try {
+    await api.post('/comments/create', {
+      commentable_type: 'user',
+      commentable_id: selectedUserId.value,
+      content: newCommentText.value
+    }, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
+    })
+    newCommentText.value = ''
+    await fetchComments(selectedUserId.value)
+  } catch (err) {
+    console.error('Ошибка отправки комментария', err)
+  }
+}
+
+// Функция ответа на комментарий
+async function postReply(commentId) {
+  if (!replyText.value.trim()) return
+  try {
+    await api.post('/comments/create', {
+      commentable_type: 'user',
+      commentable_id: selectedUserId.value,
+      content: replyText.value,
+      parent_comment: commentId
+    }, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
+    })
+    replyText.value = ''
+    replyingTo.value = null
+    await fetchComments(selectedUserId.value)
+  } catch (err) {
+    console.error('Ошибка отправки ответа', err)
+  }
+}
+async function softDeleteComment(commentId) {
+  try {
+    await api.put(`comments/delete/soft/${commentId}`, null, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('access_token')}`
+      }
+    });
+
+    await fetchComments(currentUserId);
+  } catch (err) {
+    console.error('Ошибка при удалении комментария', err);
+  }
+}
 // Обработчики для баннера
 function triggerFileInput() {
   if (isMyProfile.value) {
@@ -459,16 +610,20 @@ watch(() => route.params.userId, async (newUserId) => {
     if (newUserId == currentUserId) {
       await fetchUserDraftProject();
     }
-
     await Promise.all([
       fetchFavoritedProjects(newUserId),
       fetchProfile(newUserId),
       fetchUserProjects(newUserId),
       fetchLikedProjects(),
+      fetchComments(newUserId)
     ]);
   }
 }, { immediate: true });
-
+watch(activeTab, async (newTab) => {
+  if (newTab === 'Комментарии') {
+    await fetchComments(selectedUserId.value)
+  }
+})
 // Initial mount
 onMounted(async () => {
   let userId = route.params.userId || 'me'
@@ -488,10 +643,20 @@ onMounted(async () => {
 function changeTab(tab) { activeTab.value = tab }
 
 const tabs = computed(() => {
-  const publicTabs = ['Проекты', 'Статистика', 'Избранное', 'Понравившееся']
+  const publicTabs = ['Проекты', 'Статистика', 'Избранное', 'Понравившееся', 'Комментарии']
   const privateTabs = ['Продвижение+', 'Черновики']
   return isMyProfile.value ? [...publicTabs, ...privateTabs] : publicTabs
 })
+
+function formatDate(dateString) {
+  if (!dateString) return ''
+  try {
+    const date = parseISO(dateString)
+    return format(date, 'd MMMM yyyy г.', { locale: ru })
+  } catch {
+    return dateString
+  }
+}
 </script>
 
 <template>
@@ -604,6 +769,80 @@ const tabs = computed(() => {
         <div v-else class="tab-content">Пока нет лайков</div>
       </div>
     </div>
+    <!-- Комментарии -->
+<div v-if="activeTab === 'Комментарии'" class="comments-section">
+    <h3>Комментарии</h3>
+
+    <div v-if="currentUserId" class="new-comment-form">
+      <textarea v-model="newCommentText" placeholder="Оставьте комментарий..."></textarea>
+      <button @click="postComment" :disabled="!newCommentText.trim()">Отправить</button>
+    </div>
+
+    <div v-if="loadingComments" class="spinner">Загрузка...</div>
+
+    <div v-else-if="comments.length" class="comments-list">
+      <div
+        v-for="comment in comments"
+        :key="comment.id"
+        class="comment"
+        :class="{ 'has-replies': comment.replies && comment.replies.length }"
+      >
+        <div class="comment-header">
+          <img :src="comment.comment_owner.avatar" class="comment-avatar" />
+          <div>
+            <div class="comment-author">{{ comment.comment_owner.name }}</div>
+            <div class="comment-date">{{ formatDate(comment.created_at) }}</div>
+          </div>
+        </div>
+        <div class="comment-content">{{ comment.content }}</div>
+
+        <button
+          v-if="currentUserId && comment.content !== 'Комментарий удалён'"
+          @click="replyingTo = replyingTo === comment.id ? null : comment.id"
+          class="reply-btn"
+        >
+          Ответить
+        </button>
+
+        <button
+          v-if="currentUserId === comment.comment_owner.id && comment.content !== 'Комментарий удалён'"
+          @click="softDeleteComment(comment.id)"
+          class="delete-btn"
+        >
+          Удалить
+        </button>
+
+        <div v-if="replyingTo === comment.id" class="reply-form">
+          <textarea v-model="replyText" placeholder="Ваш ответ..."></textarea>
+          <button @click="postReply(comment.id)" :disabled="!replyText.trim()">Отправить ответ</button>
+        </div>
+
+        <div v-if="comment.replies.length" class="replies">
+          <div v-for="reply in comment.replies" :key="reply.id" class="reply">
+            <div class="comment-header">
+              <img :src="reply.comment_owner.avatar" class="comment-avatar" />
+              <div>
+                <div class="comment-author">{{ reply.comment_owner.name }}</div>
+                <div class="reply-to" v-if="reply.reply_to">в ответ пользователю {{ reply.reply_to }}</div>
+                <div class="comment-date">{{ formatDate(reply.created_at) }}</div>
+              </div>
+            </div>
+            <div class="comment-content">{{ reply.content }}</div>
+
+            <button
+              v-if="currentUserId === reply.comment_owner.id && reply.content !== 'Комментарий удалён'"
+              @click="softDeleteComment(reply.id)"
+              class="delete-btn"
+            >
+              Удалить
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-else class="no-comments">Пока нет комментариев</div>
+  </div>
 
     <!-- Others Tabs... -->
     <div v-if="activeTab === 'Продвижение+'" class="projects">
@@ -1067,5 +1306,101 @@ const tabs = computed(() => {
   text-align: center;
   color: #666;
   padding: 2rem;
+}
+
+.comments-section {
+  padding: 0 5vw 2rem;
+}
+
+.new-comment-form {
+  margin-bottom: 20px;
+}
+
+.new-comment-form textarea,
+.reply-form textarea {
+  width: 100%;
+  height: 80px;
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.comment {
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 15px;
+}
+
+.comment.has-replies {
+  border-left: 3px solid #a32aa1;
+  background-color: #fdf7fd;
+}
+
+.reply {
+  margin-top: 10px;
+  padding-left: 20px;
+  border-left: 2px solid #ddd;
+}
+
+.comment-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.comment-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-right: 10px;
+  object-fit: cover;
+}
+
+.comment-author {
+  font-weight: bold;
+}
+
+.comment-date {
+  font-size: 12px;
+  color: #777;
+}
+
+.reply-to {
+  font-size: 12px;
+  color: #999;
+  margin-top: -6px;
+}
+
+.comment-content {
+  margin-bottom: 10px;
+}
+
+.reply-btn,
+.delete-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  margin-right: 10px;
+}
+
+.reply-btn {
+  color: #a32aa1;
+}
+
+.delete-btn {
+  color: #dc3545;
+}
+
+.reply-form {
+  margin-top: 10px;
+}
+
+.no-comments {
+  text-align: center;
+  color: #777;
+  padding: 20px;
 }
 </style>
