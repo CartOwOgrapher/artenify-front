@@ -619,7 +619,7 @@ const tabs = computed(() => {
         <h2 class="modal-title">{{ selectedProject.title }}</h2>
         <p class="modal-description">{{ selectedProject.description || 'Нет описания' }}</p>
         <div class="like-block">
-          <button class="like-btn" @click="toggleLike"><span v-if="userLiked">❤️</span><span v-else">🤍</span></button>
+          <button class="like-btn" @click="toggleLike"><span v-if="userLiked">❤️</span><span v-else>🤍</span></button>
           <span class="like-count">{{ likeCount }}</span>
           <button v-if="activeTab != 'Черновики'" class="like-btn" @click="toggleLike"><span v-if="userLiked">❤️</span><span v-else>🤍</span></button>
           <span v-if="activeTab != 'Черновики'" class="like-count">{{ likeCount }}</span>

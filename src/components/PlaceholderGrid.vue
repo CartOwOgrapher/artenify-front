@@ -228,9 +228,6 @@ watch(selectedProject, p => {
 }
 
 /* Остальной CSS для модалки и элементов */
-.placeholder { /* перенесено в PostCard.vue */ }
-.placeholder-img { /* перенесено в PostCard.vue */ }
-.card-like-block { /* перенесено в PostCard.vue */ }
 
 .modal-overlay {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;
