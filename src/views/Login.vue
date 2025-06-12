@@ -1,10 +1,11 @@
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useStore } from 'vuex'
 
 const store = useStore()
 const router = useRouter()
+const route = useRoute()
 
 const email = ref('')
 const password = ref('')
@@ -20,7 +21,8 @@ const login = async () => {
     })
 
     if (response.status == 200) {
-      await router.push('/')
+      const redirect = route.query.redirect || '/'
+      router.push(redirect)
     }
     else {
       error.value = response.statusText
