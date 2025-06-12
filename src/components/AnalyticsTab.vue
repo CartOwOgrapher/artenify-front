@@ -2,10 +2,16 @@
   <div class="analytics-container">
     <!-- Фильтр по периоду -->
     <div class="date-filter">
-      <input type="date" v-model="startDate" />
-      <input type="date" v-model="endDate" />
-      <button @click="loadData">Применить</button>
-    </div>
+  <div class="date-input-wrapper">
+    <label>Начало</label>
+    <input type="date" v-model="startDate" />
+  </div>
+  <div class="date-input-wrapper">
+    <label>Конец</label>
+    <input type="date" v-model="endDate" />
+  </div>
+  <button @click="loadData">Применить</button>
+</div>
 
     <!-- Основные метрики -->
     <div class="metrics">
@@ -55,8 +61,8 @@
             <div class="post-title">{{ post.title }}</div>
             <div class="post-metrics">
               <span>👁️ {{ post.views }}</span>
-              <span>❤️ {{ post.likeCount }}</span>
-              <span>⭐ {{ post.favoritesCount }}</span>
+              <span>❤️ {{ post.likes.length }}</span>
+              <span>⭐ {{ post.favorites.length }}</span>
             </div>
           </div>
         </div>
@@ -150,45 +156,58 @@ async function loadData() {
       ? route.params.userId[0] 
       : route.params.userId || ''
 
-        const res = await api.get(`/analytics/users/${route.params.userId}`, {
-    params: { 
+    const res = await api.get(`/analytics/users/${route.params.userId}`, {
+      params: { 
         start: startDate.value,
         end: endDate.value
-    }
+      }
     });
-        
+    
     analytics.value = res.data as AnalyticsData
     
     // Подготовка данных для графика
-    const prepareSeriesData = (data: Record<string, number> | undefined) => {
-      if (!data) return []
-      return Object.entries(data).map(([date, count]) => ({
+    const prepareData = (data) => {
+      return Object.entries(data || {}).map(([date, count]) => ({
         x: new Date(date).getTime(),
         y: count
       }))
     }
 
-    const prepareData = (data) => {
-  return Object.entries(data || {}).map(([date, count]) => ({
-    x: new Date(date).getTime(),
-    y: count
-  }))
-}
-
-series.value = [
-  {
-    name: 'Лайки',
-    data: prepareData(analytics.value.likesByDay)
-  },
-  {
-    name: 'Избранное',
-    data: prepareData(analytics.value.favoritesByDay)
-  },
-  {
-    name: 'Подписки',
-    data: prepareData(analytics.value.subscriptionsByDay)
-  }
-]
+    series.value = [
+      {
+        name: 'Лайки',
+        data: prepareData(analytics.value.likesByDay)
+      },
+      {
+        name: 'Избранное',
+        data: prepareData(analytics.value.favoritesByDay)
+      },
+      {
+        name: 'Подписки',
+        data: prepareData(analytics.value.subscriptionsByDay)
+      },
+    ]
+    
+    // Фикс масштабирования для малых значений
+    if (series.value.length > 0) {
+      const allValues = series.value.flatMap(serie => serie.data.map(point => point.y));
+      const maxValue = Math.max(...allValues, 1);
+      
+      // Определяем буфер в зависимости от масштаба значений
+      const buffer = maxValue < 10 ? 1 : maxValue * 0.2;
+      const yMax = maxValue + buffer;
+      
+      chartOptions.value = {
+        ...chartOptions.value,
+        yaxis: {
+          ...chartOptions.value.yaxis,
+          min: 0,
+          max: yMax,
+          forceNiceScale: false,
+          tickAmount: Math.min(10, Math.ceil(yMax)),
+        }
+      };
+    }
     
   } catch (error) {
     console.error('Ошибка загрузки статистики:', error)
@@ -196,7 +215,6 @@ series.value = [
     loading.value = false
   }
 }
-
 // Инициализация
 onMounted(async () => {
   const today = new Date()
@@ -319,5 +337,59 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   color: #666;
+}
+
+.date-filter {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.date-input-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-width: 140px;
+}
+
+.date-input-wrapper label {
+  font-size: 0.85rem;
+  color: #666;
+  margin-bottom: 0.3rem;
+}
+
+.date-input-wrapper input[type="date"] {
+  padding: 0.6rem 0.8rem;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 1rem;
+  transition: border-color 0.3s ease;
+}
+
+.date-input-wrapper input[type="date"]:focus {
+  outline: none;
+  border-color: #a32aa1;
+  box-shadow: 0 0 0 2px rgba(163, 42, 161, 0.2);
+}
+
+.date-filter button {
+  padding: 0.6rem 1.2rem;
+  background-color: #a32aa1;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.date-filter button:hover {
+  background-color: #8e2891;
+  transform: translateY(-2px);
+}
+
+.date-filter button:active {
+  transform: translateY(0);
 }
 </style>
