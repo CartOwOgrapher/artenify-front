@@ -9,7 +9,7 @@ defineProps({
   <div class="placeholder" @click="onClick(project)">
     <img
       v-if="project.images?.length"
-      :src="`${project.images[0].path}`"
+      :src="`${project.images[0].path}`" 
       :alt="project.title"
       class="placeholder-img"
     />
