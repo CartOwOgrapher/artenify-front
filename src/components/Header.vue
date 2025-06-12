@@ -2,17 +2,31 @@
 import { ref, computed, onMounted } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
+import api from '@/axios.js'
+import flowerImg from '@/assets/flower.png'
 
 const store = useStore()
 const router = useRouter()
 
+
+onMounted(async () => {
+  if (!store.getters.isAuthenticated) return;
+
+  await store.dispatch('getUser');
+  console.log('user from store:', store.state.user);
+  const userData = computed(() => store.getters.user)
+});
+
 // Получаем данные из хранилища
 const isAuthenticated = computed(() => store.getters.isAuthenticated)
-const user = computed(() => store.state.user)
+const user = computed(() => store.getters.user)
 
-// Аватар по умолчанию
-const defaultAvatar = user.avatar
-
+const avatarUrl = computed(() => {
+  if (user.value?.avatar) {
+    return `${api.defaults.imageURL}/${user.value.avatar}`
+  }
+  return flowerImg
+})
 // Мобильное меню
 const isMenuOpen = ref(false)
 const toggleMenu = () => {
@@ -72,7 +86,7 @@ const goToMyProfile = (userId) => {
             </svg>
           </button>
           <a @click="goToMyProfile(user.id)" class="avatar-link">
-            <img :src="user?.avatar || defaultAvatar" alt="Аватар" class="avatar" />
+            <img :src="avatarUrl || flowerImg" alt="Аватар" class="avatar" />
           </a>
           <button class="logout" @click="logout">Выйти</button>
         </template>
