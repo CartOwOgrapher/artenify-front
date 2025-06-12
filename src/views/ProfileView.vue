@@ -24,8 +24,8 @@ const userCreated = ref(null)
 const profileUser = ref(null)
 const profileViews = ref(0)
 
-const subscriptionsCount = ref(0)
-const subscribersCount = ref(0)
+const profileSubscriptionsCount = ref(0)
+const profileSubscribersCount = ref(0)
 
 const selectedProject = ref(null)
 const likeCount = ref(0)
@@ -49,6 +49,9 @@ const currentUser = store.getters.user || JSON.parse(localStorage.getItem('user'
 const currentUserId = currentUser?.id
 const isMyProfile = ref(false)
 
+// Subscription state
+const isSubscribed = ref(false)
+
 // Utils
 async function fetchLikeCount(postId) {
   try {
@@ -56,6 +59,66 @@ async function fetchLikeCount(postId) {
     return res.data.count ?? 0
   } catch {
     return 0
+  }
+}
+
+// Subscription functions
+async function fetchSubscriptionStatus(toUserId) {
+  if (!currentUserId) return;
+  try {
+    const res = await api.get(`/subscriptions/subscription/check/${toUserId}`, { 
+      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } 
+    });
+    isSubscribed.value = res.data.isSubscribed;
+  } catch (err) {
+    console.error('Ошибка при проверке подписки', err);
+    isSubscribed.value = false;
+  }
+}
+
+async function subscribeToUser(toUserId) {
+  try {
+    await api.post(`/subscriptions/subscribe/${toUserId}`, {}, { 
+      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } 
+    });
+    isSubscribed.value = true;
+    await fetchProfileCounts(route.params.userId);
+  } catch (err) {
+    console.error('Ошибка при подписке', err);
+  }
+}
+
+async function unsubscribeFromUser(toUserId) {
+  try {
+    await api.post(`/subscriptions/unsubscribe/${toUserId}`, {}, { 
+      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } 
+    });
+    isSubscribed.value = false;
+    await fetchProfileCounts(route.params.userId);
+  } catch (err) {
+    console.error('Ошибка при отписке', err);
+  }
+}
+
+async function fetchProfileCounts(userId) {
+  try {
+    if (userId === currentUserId || userId === 'me') {
+      const [subscrRes, subersRes] = await Promise.all([
+        api.get('/subscriptions/subscriptions', { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } }),
+        api.get('/subscriptions/subscribers', { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
+      ]);
+      profileSubscriptionsCount.value = subscrRes.data.subscribtions?.length || 0;
+      profileSubscribersCount.value = subersRes.data.subscribers?.length || 0;
+    } else {
+      const [subscrRes, subersRes] = await Promise.all([
+        api.get(`/subscriptions/other?userId=${userId}`, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } }),
+        api.get(`/subscribers/other?userId=${userId}`, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
+      ]);
+      profileSubscriptionsCount.value = subscrRes.data.subscribtions?.length || 0;
+      profileSubscribersCount.value = subersRes.data.subscribers?.length || 0;
+    }
+  } catch (err) {
+    console.error('Ошибка при загрузке счетчиков', err);
   }
 }
 
@@ -70,6 +133,14 @@ async function fetchProfile(userId) {
     userName.value = res.data.name
     userCreated.value = res.data.created_at || res.data.createdAt || res.data.createdAt
     profileViews.value = res.data.views ?? 0
+    
+    // Загрузка статуса подписки для чужого профиля
+    if (userId !== currentUserId && userId !== 'me') {
+      await fetchSubscriptionStatus(profileUser.value.id);
+    }
+    
+    // Загрузка счетчиков подписчиков
+    await fetchProfileCounts(userId);
   } catch (err) {
     console.error('Ошибка при загрузке профиля:', err)
     userName.value = 'Не удалось загрузить профиль'
@@ -120,6 +191,7 @@ async function fetchLikedProjects() {
     loadingLiked.value = false
   }
 }
+
 
 // 4) Fetch favorited projects
 async function fetchFavoritedProjects() {
@@ -192,20 +264,6 @@ async function fetchProjectModalData(postId) {
   loadingModal.value = false
 }
 
-// Subscriptions
-async function fetchSubscriptionsCount() {
-  try {
-    const res = await api.get('/subscriptions/subscriptions', { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
-    subscriptionsCount.value = res.data.subscribtions?.length || 0
-  } catch { subscriptionsCount.value = 0 }
-}
-async function fetchSubscribersCount() {
-  try {
-    const res = await api.get('/subscriptions/subscribers', { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
-    subscribersCount.value = res.data.subscribers?.length || 0
-  } catch { subscribersCount.value = 0 }
-}
-
 // Modal open/close
 function openModal(p) { selectedProject.value = p; fetchProjectModalData(p.id) }
 function closeModal() { selectedProject.value = null }
@@ -216,8 +274,6 @@ watch(() => route.params.userId, async (newUserId) => {
     await Promise.all([
       fetchUserProjects(newUserId),
       fetchLikedProjects(),
-      fetchSubscriptionsCount(),
-      fetchSubscribersCount()
     ]);
   }
 }, { immediate: true });
@@ -228,7 +284,7 @@ onMounted(async () => {
   if (!store.getters.isAuthenticated) { router.push('/login'); return }
   if (!route.params.userId) userId = currentUserId
   await fetchProfile(userId)
-  await Promise.all([fetchUserProjects(userId), fetchLikedProjects(), fetchFavoritedProjects(), fetchSubscriptionsCount(), fetchSubscribersCount()])
+  await Promise.all([fetchUserProjects(userId), fetchLikedProjects(), fetchFavoritedProjects()])
 })
 
 function changeTab(tab) { activeTab.value = tab }
@@ -239,8 +295,8 @@ function onDragLeave() { isDragOver.value = false }
 function onDrop(e) { isDragOver.value = false; const f = e.dataTransfer.files[0]; if (f?.type.startsWith('image/')) bannerImage.value = URL.createObjectURL(f) }
 
 const tabs = computed(() => {
-  const publicTabs = ['Проекты', 'Статистика']
-  const privateTabs = ['Избранное', 'Понравившееся', 'Продвижение+', 'Черновики']
+  const publicTabs = ['Проекты', 'Статистика', 'Избранное', 'Понравившееся']
+  const privateTabs = ['Продвижение+', 'Черновики']
   return isMyProfile.value ? [...publicTabs, ...privateTabs] : publicTabs
 })
 
@@ -262,9 +318,33 @@ const tabs = computed(() => {
       <div class="info">
         <h2 v-if="loadingProfile"><div class="spinner"></div></h2>
         <h2 v-else>{{ userName }}</h2>
-        <p>Подписки: <b>{{ subscriptionsCount }}</b> | Подписчики: <b>{{ subscribersCount }}</b></p>
+        <p>Подписки: <b>{{ profileSubscriptionsCount }}</b> | Подписчики: <b>{{ profileSubscribersCount }}</b></p>
         <p class="views-counter"><span>👁️ Просмотры профиля: <b>{{ profileViews }}</b></span></p>
-        <div v-if="isMyProfile" class="buttons"><button class="edit">✏️ Редактировать профиль</button><button class="setup">⚙️ Настроить профиль <span class="tag">artenify+</span></button></div>
+        
+        <!-- Кнопки для своего профиля -->
+        <div v-if="isMyProfile" class="buttons">
+          <button class="edit">✏️ Редактировать профиль</button>
+          <button class="setup">⚙️ Настроить профиль <span class="tag">artenify+</span></button>
+        </div>
+        
+        <!-- Кнопка подписки для чужого профиля -->
+        <div v-else class="buttons">
+          <button 
+            v-if="!isSubscribed" 
+            @click="subscribeToUser(profileUser.id)"
+            class="subscribe-btn"
+          >
+            Подписаться
+          </button>
+          <button 
+            v-else 
+            @click="unsubscribeFromUser(profileUser.id)"
+            class="unsubscribe-btn"
+          >
+            Отписаться
+          </button>
+        </div>
+        
         <p class="reg-date">{{ formattedRegDate }}</p>
       </div>
     </div>
@@ -280,7 +360,6 @@ const tabs = computed(() => {
         {{ tab }}
       </span>
     </nav>
-
 
     <!-- Projects -->
     <div v-if="activeTab==='Проекты'" class="projects">
@@ -601,6 +680,31 @@ const tabs = computed(() => {
   font-size: 24px;
   cursor: pointer;
   padding: 0;
+}
+.subscribe-btn {
+  background: #4CAF50;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.unsubscribe-btn {
+  background: #f44336;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
 }
 
 .like-count {
