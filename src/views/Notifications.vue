@@ -51,11 +51,27 @@ onMounted(async () => {
   await fetchNotifications()
   await markAllAsRead()
 })
+
+onMounted(() => {
+  const bg = document.getElementById('background-effect')
+  if (!bg) return
+
+  window.addEventListener('mousemove', (e) => {
+    const x = e.clientX / window.innerWidth
+    const y = e.clientY / window.innerHeight
+    bg.style.setProperty('--mouse-x', x)
+    bg.style.setProperty('--mouse-y', y)
+  })
+})
+
+
+
 </script>
 
 <template>
-  <div class="notifications-page">
-    <div class="container">
+  <div class="background-effect" id="background-effect">
+    <div class="notifications-page">
+      <div class="container">
       <div class="header-section">
         <h1>Уведомления</h1>
         <button 
@@ -112,22 +128,61 @@ onMounted(async () => {
         </div>
       </div>
     </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .notifications-page {
-  padding: 20px;
-  max-width: 800px;
-  margin: 80px auto 40px;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  min-width: 100vw;
+  padding: 40px 20px;
 }
 
 .container {
   background: white;
   border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
   padding: 30px;
+  max-width: 700px;
+  width: 100%;
+  position: relative;
+  z-index: 1;
 }
+
+.background-effect {
+  --mouse-x: 0.5;
+  --mouse-y: 0.5;
+
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+
+  background: #fdf5f9 url('https://www.transparenttextures.com/patterns/graphy.png') repeat;
+  background-size: auto;
+
+  /* наложенный динамический градиент */
+}
+
+.background-effect::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at calc(var(--mouse-x) * 100%) calc(var(--mouse-y) * 100%),
+    rgba(255, 255, 255, 0.5),
+    rgba(255, 255, 255, 0) 40%
+  );
+  transition: background 0.1s ease;
+  z-index: 0;
+}
+
 
 .header-section {
   display: flex;

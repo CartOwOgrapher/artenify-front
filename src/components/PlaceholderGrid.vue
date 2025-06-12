@@ -204,15 +204,15 @@ watch(selectedProject, p => {
         <h2 class="modal-title">{{ selectedProject.title }}</h2>
         <p class="modal-description">{{ selectedProject.content || 'Нет описания' }}</p>
 
-        <div class="owner-block">
+        <div class="owner-block" @click="goToOwnerProfile(ownerPost.id)">
           <img
             v-if="ownerPost?.avatar"
             :src="`${api.defaults.imageURL}/${ownerPost.avatar}`"
             class="owner-avatar"
-            @click="goToOwnerProfile(ownerPost.id)"
           />
-          <a v-else @click="goToOwnerProfile(ownerPost.id)">{{ ownerPost?.name }}</a>
+          <span class="owner-name">{{ ownerPost?.name }}</span>
         </div>
+
 
         <div class="like-block">
           <button class="like-btn" @click="toggleLike">
@@ -281,10 +281,19 @@ watch(selectedProject, p => {
   object-fit: cover; margin-bottom: 20px; border-radius: 8px;
 }
 
-.modal-title { font-size: 24px; margin-bottom: 10px; }
-.modal-description {
-  font-size: 16px; color: #333; white-space: pre-wrap;
+.modal-title {
+  font-size: 24px;
+  margin-bottom: 10px;
 }
+
+.modal-description {
+  font-size: 16px;
+  color: #333;
+  white-space: pre-wrap;
+  text-align: left; /* вот это добавляем */
+  margin-bottom: 20px;
+}
+
 
 .like-block {
   position: absolute; bottom: 16px; right: 16px;
@@ -306,8 +315,9 @@ watch(selectedProject, p => {
 
 .favorite-block {
   position: absolute;
-  left: 20px;
-  top: 20px;
+  left: 8px;
+  top: 8px;
+  z-index: 1001;
 }
 
 .favorite-btn {
@@ -342,4 +352,28 @@ watch(selectedProject, p => {
 .modal-img-wrapper:hover .modal-hover-title {
   opacity: 1; pointer-events: auto;
 }
+
+.owner-block {
+  display: flex;
+  flex-direction: column;     /* элементы — столбиком */
+  align-items: flex-start;    /* выравнивание по левому краю */
+  gap: 4px;                   /* отступ между аватаркой и ником */
+  cursor: pointer;
+}
+
+.owner-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.owner-name {
+  font-size: 16px;
+  color: #333;
+  text-decoration: underline;
+}
+
+
+
 </style>

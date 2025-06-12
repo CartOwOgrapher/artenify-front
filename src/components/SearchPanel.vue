@@ -279,4 +279,12 @@ function fetchCategories() {
 .fade-enter-from, .fade-leave-to {
   opacity: 0;
 }
+/* === Уменьшаем отступ SearchPanel на мобильных === */
+@media (max-width: 1200px) {
+  .search-panel {
+    margin-top: var(--header-offset);
+    top: var(--header-offset);
+  }
+}
+
 </style>

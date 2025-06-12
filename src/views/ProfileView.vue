@@ -969,6 +969,8 @@ const tabs = computed(() => {
   font-size: 16px;
   color: #333;
   white-space: pre-wrap;
+  text-align: left; /* вот это добавляем */
+  margin-bottom: 20px;
 }
 
 .like-block {
@@ -989,7 +991,33 @@ const tabs = computed(() => {
 }
 
 .subscribe-btn {
-  background: #4CAF50;
+  background: linear-gradient(135deg, #ff69b4, #f8a5c2); /* розовый градиент */
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Grain effect (внутри subscribe-btn) */
+.subscribe-btn::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url('https://www.transparenttextures.com/patterns/asfalt-light.png'); /* зернистость */
+  opacity: 0.2;
+  pointer-events: none;
+}
+
+/* Более мягкий красный */
+.unsubscribe-btn {
+  background: #e24373; /* мягкий красный */
   color: white;
   padding: 8px 16px;
   border: none;
@@ -998,15 +1026,6 @@ const tabs = computed(() => {
   font-weight: bold;
 }
 
-.unsubscribe-btn {
-  background: #f44336;
-  color: white;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
-}
 
 .buttons {
   display: flex;
@@ -1031,13 +1050,13 @@ const tabs = computed(() => {
 
 .favorite-btn-top-left {
   position: absolute;
-  top: 16px;
-  left: 16px;
+  left: 8px;
+  top: 8px;
+  z-index: 1001;
   background: none;
   border: none;
   font-size: 24px;
   cursor: pointer;
-  z-index: 10;
 }
 
 .favorite-btn-top-left:hover {

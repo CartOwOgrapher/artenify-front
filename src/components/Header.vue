@@ -344,7 +344,7 @@ button {
   }
   
   .logo img {
-    height: 35px;
+    height: 80px;
   }
   
   .mobile-menu {
