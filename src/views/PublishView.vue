@@ -189,8 +189,7 @@ onMounted(async () => {
         <!-- Левая часть - форма -->
         <div class="form-section">
           <h1 class="title">
-            <span class="title-primary">ОПУБЛИКОВАТЬ</span>
-            <span class="title-secondary">ПРОЕКТ</span>
+            <span class="title-primary">ОПУБЛИКОВАТЬ ПРОЕКТ</span>
           </h1>
 
           <div class="form">
@@ -287,10 +286,10 @@ onMounted(async () => {
               </label>
             </div>
 
-            <!-- Кнопка продолжения -->
+            <!-- Кнопка подтверждения -->
             <button
               :disabled="!canContinue"
-              @click="showModal = true"
+              @click="handleSubmit"
               class="submit-btn"
               :class="{ disabled: !canContinue }"
             >
@@ -349,59 +348,6 @@ onMounted(async () => {
               <div class="placeholder-title">Нет изображений</div>
               <div class="placeholder-subtitle">Загрузите файлы для превью</div>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Модалка подтверждения -->
-      <div v-if="showModal" class="modal-overlay" @click="showModal = false">
-        <div class="modal" @click.stop>
-          <div class="modal-header">
-            <h2 class="modal-title">Публикация проекта</h2>
-            <button @click="showModal = false" class="modal-close">×</button>
-          </div>
-          
-          <div class="modal-content">
-            <div class="input-group">
-              <label class="input-label">Название</label>
-              <input
-                v-model="form.title"
-                class="form-input"
-                placeholder="Название проекта"
-              />
-            </div>
-            <div class="input-group">
-              <label class="input-label">Инструменты</label>
-              <input
-                v-model="form.tools"
-                class="form-input"
-                placeholder="Инструменты"
-              />
-            </div>
-            <div class="input-group">
-              <label class="input-label">Видимость</label>
-              <select v-model="form.visibility" class="form-select">
-                <option value="public">🌍 Публичный</option>
-                <option value="private">🔒 Приватный</option>
-                <option value="unlisted">🔗 По ссылке</option>
-              </select>
-            </div>
-            <div class="checkbox-group">
-              <label class="checkbox-container">
-                <input type="checkbox" v-model="form.draft" class="checkbox-input" />
-                <span class="checkbox-custom"></span>
-                <span class="checkbox-text">Черновик</span>
-              </label>
-            </div>
-          </div>
-          
-          <div class="modal-actions">
-            <button @click="handleSubmit" class="btn-primary">
-              Опубликовать
-            </button>
-            <button @click="showModal = false" class="btn-secondary">
-              Отмена
-            </button>
           </div>
         </div>
       </div>
@@ -523,10 +469,6 @@ onMounted(async () => {
   color: var(--accent-teal);
 }
 
-.title-secondary {
-  color: var(--text-primary);
-}
-
 .form {
   display: flex;
   flex-direction: column;
@@ -549,7 +491,7 @@ onMounted(async () => {
 .form-input, .form-textarea, .form-select {
   width: 100%;
   padding: 12px 16px;
-  background: var(--bg-card);
+  background: #d9e5ee;
   border: 1px solid var(--border-light);
   border-radius: 8px;
   color: var(--text-primary);
@@ -636,8 +578,8 @@ onMounted(async () => {
 }
 
 .tag-btn {
-  background: var(--accent-teal);
-  color: var(--text-primary);
+  background: #fa97c8;
+  color: #FFFFFF;
   border: none;
   padding: 12px 20px;
   border-radius: 8px;
@@ -649,7 +591,7 @@ onMounted(async () => {
 }
 
 .tag-btn:hover {
-  background: #45BAB1;
+  background: #ff73b9;
 }
 
 .selected-tags {
@@ -731,8 +673,8 @@ onMounted(async () => {
 
 /* Главная кнопка */
 .submit-btn {
-  background: var(--accent-teal);
-  color: var(--text-primary);
+  background: #fa97c8;
+  color: #FFFFFF;
   border: none;
   border-radius: 8px;
   padding: 16px 24px;
@@ -744,7 +686,7 @@ onMounted(async () => {
 }
 
 .submit-btn:hover:not(.disabled) {
-  background: #45BAB1;
+  background: #ff73b9;
   transform: translateY(-1px);
 }
 
@@ -791,9 +733,9 @@ onMounted(async () => {
 }
 
 .preview-status.active {
-  background: rgba(79, 209, 199, 0.15);
-  color: var(--accent-teal);
-  border-color: rgba(79, 209, 199, 0.3);
+  background: rgba(57, 245, 110, 0.15);
+  color: #3ce26b;
+  border-color: rgba(57, 245, 110, 0.3);
 }
 
 /* Основное превью */
@@ -904,7 +846,7 @@ onMounted(async () => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(128, 128, 128, 0.7);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -913,7 +855,7 @@ onMounted(async () => {
 }
 
 .modal {
-  background: rgba(238, 184, 184, 0.7);
+  background: rgba(255, 255, 255);
   border: 1px solid var(--border-medium);
   border-radius: 16px;
   padding: 24px;
@@ -1099,7 +1041,7 @@ onMounted(async () => {
 /* Сообщения */
 .message {
   position: fixed;
-  top: 20px;
+  bottom: 20px;
   right: 20px;
   display: flex;
   align-items: center;

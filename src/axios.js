@@ -52,7 +52,7 @@ api.interceptors.response.use(
 
     // Проверяем, что это ошибка истекшего токена и это не повторный запрос
     if (
-      error.response?.data?.message === "Token expired" &&
+      ((error.response?.data?.message === "Token expired") || (error.response?.status == 401)) &&
       !originalRequest._retry
     ) {
 

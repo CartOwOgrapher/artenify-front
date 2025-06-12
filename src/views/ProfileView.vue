@@ -18,6 +18,7 @@ const store = useStore()
 const projects = ref([])
 const likedProjects = ref([])
 const favoritedProjects = ref([])
+const draftProjects = ref([])
 
 const userName = ref('')
 const userCreated = ref(null)
@@ -36,6 +37,7 @@ const loadingProfile = ref(false)
 const loadingProjects = ref(false)
 const loadingLiked = ref(false)
 const loadingModal = ref(false)
+const loadingDraft = ref(false)
 
 const activeTab = ref('Проекты')
 
@@ -47,6 +49,7 @@ const fileInput = ref(null)
 // Current user
 const currentUser = store.getters.user || JSON.parse(localStorage.getItem('user'))
 const currentUserId = currentUser?.id
+const selectedUserId = ref(null)
 const isMyProfile = ref(false)
 
 // Utils
@@ -100,6 +103,18 @@ async function fetchUserProjects(userId) {
     console.error(err)
   } finally {
     loadingProjects.value = false
+  }
+}
+
+async function fetchUserDraftProject() {
+  loadingDraft.value = true
+  try {
+    const res = await api.get(`posts/me/drafts`)
+    draftProjects.value = res.data.data || []
+   } catch (err) {
+    console.error(err)
+  } finally {
+    loadingDraft.value = false
   }
 }
 
@@ -212,8 +227,13 @@ function closeModal() { selectedProject.value = null }
 
 watch(() => route.params.userId, async (newUserId) => {
   if (newUserId) {
-    await fetchProfile(newUserId);
+    selectedUserId.value = newUserId;
+    if (newUserId == currentUserId) {
+      await fetchUserDraftProject();
+    }
+
     await Promise.all([
+      fetchProfile(newUserId),
       fetchUserProjects(newUserId),
       fetchLikedProjects(),
       fetchSubscriptionsCount(),
@@ -226,7 +246,11 @@ watch(() => route.params.userId, async (newUserId) => {
 onMounted(async () => {
   let userId = route.params.userId || 'me'
   if (!store.getters.isAuthenticated) { router.push('/login'); return }
-  if (!route.params.userId) userId = currentUserId
+  if (!route.params.userId) {
+    userId = currentUserId
+    await fetchUserDraftProject()
+  }
+  selectedUserId.value = userId;
   await fetchProfile(userId)
   await Promise.all([fetchUserProjects(userId), fetchLikedProjects(), fetchFavoritedProjects(), fetchSubscriptionsCount(), fetchSubscribersCount()])
 })
@@ -327,20 +351,32 @@ const tabs = computed(() => {
     <!-- Others Tabs... -->
     <div v-if="activeTab==='Продвижение+'" class="projects"><h3>Продвижение+</h3><div class="tab-content">Продвижение в разработке</div></div>
     <div v-if="activeTab==='Статистика'" class="projects"><h3>Статистика</h3><div class="tab-content">Статистика по проектам будет здесь</div></div>
-    <div v-if="activeTab==='Черновики'" class="projects"><h3>Черновики</h3><div class="tab-content">Черновиков пока нет</div></div>
+    <div v-if="activeTab==='Черновики' && selectedUserId === currentUserId" class="projects">
+      <h3>Черновики</h3>
+      <div v-if="loadingDraft" class="spinner"/>
+      <div v-else>
+        <div v-if="draftProjects.length" class="project-grid">
+            <div v-for="p in draftProjects" :key="p.id" class="placeholder" @click="openModal(p)">
+              <img v-if="p.images?.length" :src="`${api.defaults.imageURL}/${p.images[0].path}`" :alt="p.title" class="placeholder-img"/>
+              <div v-else class="placeholder-img">Нет изображения</div>
+            </div>
+          </div>
+        <div v-else class="tab-content">Черновиков пока нет</div>
+      </div>
+    </div>
 
     <!-- Modal -->
     <div v-if="selectedProject" class="modal-overlay" @click.self="closeModal">
       <div class="modal-content">
-        <button class="favorite-btn-top-left" @click="toggleFavorite">
+        <button v-if="activeTab != 'Черновики'" class="favorite-btn-top-left" @click="toggleFavorite">
           <span v-if="userFavorited">⭐</span><span v-else>☆</span>
         </button>
         <img v-if="selectedProject.images?.length" :src="`${api.defaults.imageURL}/${selectedProject.images[0].path}`" :alt="selectedProject.title" class="modal-img"/>
         <h2 class="modal-title">{{ selectedProject.title }}</h2>
         <p class="modal-description">{{ selectedProject.description || 'Нет описания' }}</p>
         <div class="like-block">
-          <button class="like-btn" @click="toggleLike"><span v-if="userLiked">❤️</span><span v-else>🤍</span></button>
-          <span class="like-count">{{ likeCount }}</span>
+          <button v-if="activeTab != 'Черновики'" class="like-btn" @click="toggleLike"><span v-if="userLiked">❤️</span><span v-else>🤍</span></button>
+          <span v-if="activeTab != 'Черновики'" class="like-count">{{ likeCount }}</span>
         </div>
         <button class="modal-close" @click="closeModal">Закрыть</button>
       </div>
