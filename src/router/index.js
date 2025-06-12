@@ -50,6 +50,12 @@ const routes = [
     name: 'Leaders',
     component: LeadersView,
   },
+  {
+  path: '/notifications',
+  name: 'Notifications',
+  component: () => import('@/views/Notifications.vue'),
+  meta: { requiresAuth: true }
+  },
 ];
 
 const router = createRouter({
