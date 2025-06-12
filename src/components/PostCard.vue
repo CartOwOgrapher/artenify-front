@@ -1,4 +1,6 @@
 <script setup>
+import api from '@/axios.js'
+
 defineProps({
   project: { type: Object, required: true },
   onClick: { type: Function, required: true }
@@ -9,7 +11,7 @@ defineProps({
   <div class="placeholder" @click="onClick(project)">
     <img
       v-if="project.images?.length"
-      :src="`${project.images[0].path}`"
+      :src="`${api.defaults.imageURL}/${project.images[0].path}`"
       :alt="project.title"
       class="placeholder-img"
     />
