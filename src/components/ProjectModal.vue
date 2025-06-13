@@ -4,27 +4,18 @@
       <div v-if="project" class="modal-body">
         <!-- Изображение с блоком избранного -->
         <div class="modal-img-wrapper">
-          <img 
-            :src="project.images ? `${api.defaults.imageURL}/${project.images[0].path}` : flowerImg" 
-            :alt="project.title" 
-            class="modal-img"
-          />
+          <img :src="project.images ? `${api.defaults.imageURL}/${project.images[0].path}` : flowerImg"
+            :alt="project.title" class="modal-img" />
           <div class="modal-hover-title">{{ project.title }}</div>
-          
+
           <!-- Кнопка избранного (закладка в левом верхнем углу) -->
           <div class="favorite-block">
-            <button 
-              class="favorite-btn" 
-              @click="toggleFavorite"
-              :title="userFavorited ? 'Удалить из избранного' : 'Добавить в избранное'"
-            >
+            <button class="favorite-btn" @click="toggleFavorite"
+              :title="userFavorited ? 'Удалить из избранного' : 'Добавить в избранное'">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path 
-                  d="M5 2C3.9 2 3 2.9 3 4V22L12 18L21 22V4C21 2.9 20.1 2 19 2H5Z" 
-                  :fill="userFavorited ? '#ffd700' : 'none'"
-                  :stroke="userFavorited ? '#ffd700' : '#ffffff'"
-                  stroke-width="2"
-                />
+                <path d="M5 2C3.9 2 3 2.9 3 4V22L12 18L21 22V4C21 2.9 20.1 2 19 2H5Z"
+                  :fill="userFavorited ? '#ffd700' : 'none'" :stroke="userFavorited ? '#ffd700' : '#ffffff'"
+                  stroke-width="2" />
               </svg>
             </button>
           </div>
@@ -38,11 +29,8 @@
 
         <!-- Информация о владельце -->
         <div v-if="ownerPost" class="owner-block" @click="goToOwnerProfile(ownerPost.id)">
-          <img 
-            :src="ownerPost.avatar ? `${api.defaults.imageURL}/${ownerPost.avatar}` : flowerImg" 
-            :alt="ownerPost.name" 
-            class="owner-avatar"
-          />
+          <img :src="ownerPost.avatar ? `${api.defaults.imageURL}/${ownerPost.avatar}` : flowerImg" :alt="ownerPost.name"
+            class="owner-avatar" />
           <span class="owner-name">{{ ownerPost.name }}</span>
         </div>
 
@@ -55,35 +43,24 @@
         <div class="content-actions">
           <!-- Кнопка голосования (только для экспертов) -->
           <div v-if="isExpert" class="vote-block">
-            <button 
-              class="vote-btn" 
-              @click="voteForPost"
-              :disabled="hasVoted || votingInProgress"
-              :title="hasVoted ? 'Вы уже проголосовали на этой неделе' : 'Проголосовать за лучший пост недели'"
-            >
+            <button class="vote-btn" @click="voteForPost" :disabled="hasVoted || votingInProgress"
+              :title="hasVoted ? 'Вы уже проголосовали на этой неделе' : 'Проголосовать за лучший пост недели'">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path 
-                  d="M9 21.5L17.5 13L13 10L15 2.5L6.5 11L11 14L9 21.5Z" 
-                  :fill="hasVoted ? '#4CAF50' : 'none'"
-                  :stroke="hasVoted ? '#4CAF50' : '#666'"
-                  stroke-width="2"
-                />
+                <path d="M9 21.5L17.5 13L13 10L15 2.5L6.5 11L11 14L9 21.5Z" :fill="hasVoted ? '#4CAF50' : 'none'"
+                  :stroke="hasVoted ? '#4CAF50' : '#666'" stroke-width="2" />
               </svg>
               <span v-if="!hasVoted">Проголосовать</span>
               <span v-else>Голос учтен</span>
             </button>
           </div>
-          
+
           <!-- Блок лайков -->
           <div class="like-block">
             <button class="like-btn" @click="toggleLike">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path 
-                  d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" 
-                  :fill="userLiked ? '#ff3040' : 'none'"
-                  :stroke="userLiked ? '#ff3040' : '#666'"
-                  stroke-width="2"
-                />
+                <path
+                  d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                  :fill="userLiked ? '#ff3040' : 'none'" :stroke="userLiked ? '#ff3040' : '#666'" stroke-width="2" />
               </svg>
             </button>
             <span class="like-count">{{ likeCount }}</span>
@@ -93,19 +70,11 @@
         <!-- Секция комментариев -->
         <div class="modal-comments-section">
           <h4>Комментарии</h4>
-          
+
           <!-- Форма добавления комментария -->
           <div class="new-comment-form">
-            <textarea
-              v-model="newCommentText"
-              placeholder="Написать комментарий..."
-              class="comment-textarea"
-            ></textarea>
-            <button 
-              @click="postComment"
-              :disabled="!newCommentText.trim()"
-              class="comment-submit-btn"
-            >
+            <textarea v-model="newCommentText" placeholder="Написать комментарий..." class="comment-textarea"></textarea>
+            <button @click="postComment" :disabled="!newCommentText.trim()" class="comment-submit-btn">
               Отправить
             </button>
           </div>
@@ -121,8 +90,9 @@
             <div v-if="!comments.length" class="no-comments">
               Комментариев пока нет. Будьте первым!
             </div>
-            
-            <div v-for="comment in comments" :key="comment.id" class="comment" :class="{ 'has-replies': comment.replies.length }">
+
+            <div v-for="comment in comments" :key="comment.id" class="comment"
+              :class="{ 'has-replies': comment.replies.length }">
               <!-- Заголовок комментария -->
               <div class="comment-header">
                 <img :src="comment.comment_owner.avatar" :alt="comment.comment_owner.name" class="comment-avatar" />
@@ -135,34 +105,21 @@
 
               <!-- Действия с комментарием -->
               <div class="comment-actions">
-                <button 
-                  v-if="!comment.deleted" 
-                  @click="replyingTo = replyingTo === comment.id ? null : comment.id"
-                  class="reply-btn"
-                >
+                <button v-if="!comment.deleted" @click="replyingTo = replyingTo === comment.id ? null : comment.id"
+                  class="reply-btn">
                   Ответить
                 </button>
-                <button 
-                  v-if="currentUser && currentUser.id === comment.comment_owner.id && !comment.deleted"
-                  @click="softDeleteComment(comment.id)"
-                  class="delete-btn"
-                >
+                <button v-if="currentUser && currentUser.id === comment.comment_owner.id && !comment.deleted"
+                  @click="softDeleteComment(comment.id)" class="delete-btn">
                   Удалить
                 </button>
               </div>
 
               <!-- Форма ответа -->
               <div v-if="replyingTo === comment.id" class="reply-form">
-                <textarea
-                  v-model="replyText"
-                  :placeholder="`Ответить ${comment.comment_owner.name}...`"
-                  class="reply-textarea"
-                ></textarea>
-                <button 
-                  @click="postReply(comment.id)"
-                  :disabled="!replyText.trim()"
-                  class="reply-submit-btn"
-                >
+                <textarea v-model="replyText" :placeholder="`Ответить ${comment.comment_owner.name}...`"
+                  class="reply-textarea"></textarea>
+                <button @click="postReply(comment.id)" :disabled="!replyText.trim()" class="reply-submit-btn">
                   Отправить ответ
                 </button>
               </div>
@@ -175,19 +132,15 @@
                     <span class="comment-author">{{ reply.comment_owner.name }}</span>
                     <span class="comment-date">{{ formatDate(reply.created_at) }}</span>
                   </div>
-                  
+
                   <div v-if="reply.reply_to" class="reply-to">
                     в ответ {{ reply.reply_to }}
                   </div>
-                  
+
                   <div class="comment-content">{{ reply.content }}</div>
-                  
-                  <button 
-                    v-if="currentUser && currentUser.id === reply.comment_owner.id && !reply.deleted"
-                    @click="softDeleteComment(reply.id)"
-                    class="delete-btn reply-delete-btn"
-                  >
-                    Удалить
+
+                  <button v-if="currentUser && currentUser.id === reply.comment_owner.id && !reply.deleted"
+                    @click="softDeleteComment(reply.id)" class="delete-btn reply-delete-btn">Удалить
                   </button>
                 </div>
               </div>
@@ -248,7 +201,7 @@ const votingInProgress = ref(false)
 // Проверяем статус эксперта
 async function checkExpertStatus() {
   if (!currentUser.value) return
-  
+
   try {
     const response = await api.get('/expert/status')
     isExpert.value = response.data.is_expert
@@ -261,7 +214,7 @@ async function checkExpertStatus() {
 // Голосование за пост
 async function voteForPost() {
   if (!props.project?.id || hasVoted.value || !isExpert.value) return
-  
+
   votingInProgress.value = true
   try {
     await api.post('/vote', {
@@ -344,7 +297,7 @@ async function fetchFavoriteStatus(userId) {
 
     const favoritedPosts = response.data.favorite || [];
     userFavorited.value = favoritedPosts.some(fav => fav.favoriteble_id == props.project.id);
-  
+
   } catch (e) {
     console.error('Ошибка fetchFavoriteStatus:', e)
     userFavorited.value = false
@@ -391,8 +344,8 @@ async function toggleFavorite() {
 
 // Функции для комментариев
 async function getUserInfo(userId) {
-  if (usersCache.value[userId]) {
-    return usersCache.value[userId];
+  if (comments.value[userId]) {
+    return comments.value[userId];
   }
 
   try {
@@ -414,7 +367,7 @@ async function getUserInfo(userId) {
         : flowerImg
     };
 
-    usersCache.value[userId] = userData;
+    comments.value[userId] = userData;
     return userData;
   } catch (err) {
     console.error(`Ошибка загрузки пользователя ${userId}`, err);
@@ -576,37 +529,36 @@ watch(() => props.project, (newProject) => {
 
 <style scoped>
 .modal-overlay {
-  position: fixed; 
-  top: 0; 
-  left: 0; 
-  right: 0; 
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
   bottom: 0;
-  background: rgba(0,0,0,0.6);
-  display: flex; 
-  justify-content: center; 
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
   align-items: center;
   z-index: 1000;
 }
 
 .modal-content {
   position: relative;
-  background: #fff; 
-  padding: 30px; 
+  background: #fff;
+  padding: 30px;
   border-radius: 12px;
-  max-width: 600px; 
+  max-width: 600px;
   width: 90%;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 2px 20px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.2);
   text-align: center;
 }
 
 .modal-img {
-  width: 100%; 
-  max-height: 300px;
-  object-fit: cover; 
-  margin-bottom: 20px; 
-  border-radius: 8px;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  /* Сохраняет пропорции и помещает картинку целиком */
 }
 
 .modal-title {
@@ -629,12 +581,12 @@ watch(() => props.project, (newProject) => {
 }
 
 .modal-close {
-  margin-top: 40px; 
+  margin-top: 40px;
   padding: 10px 20px;
-  background: #333; 
-  color: white; 
+  background: #333;
+  color: white;
   border: none;
-  border-radius: 8px; 
+  border-radius: 8px;
   cursor: pointer;
 }
 
@@ -647,7 +599,7 @@ watch(() => props.project, (newProject) => {
 }
 
 .favorite-btn {
-  background: rgba(0,0,0,0.7);
+  background: rgba(0, 0, 0, 0.7);
   border: none;
   cursor: pointer;
   padding: 8px;
@@ -660,31 +612,32 @@ watch(() => props.project, (newProject) => {
 }
 
 .favorite-btn:hover {
-  background: rgba(0,0,0,0.9);
+  background: rgba(0, 0, 0, 0.9);
   transform: scale(1.05);
 }
 
 .modal-img-wrapper {
-  position: relative;
-  display: inline-block;
-  width: 100%;
-  max-height: 300px;
+  max-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
   border-radius: 8px;
+  background-color: #f5f5f5;
 }
 
 .modal-hover-title {
   position: absolute;
-  top: 50%; 
+  top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  color: white; 
-  font-size: 24px; 
+  color: white;
+  font-size: 24px;
   font-weight: 600;
-  text-align: center; 
+  text-align: center;
   padding: 10px 20px;
   background-color: rgba(0, 0, 0, 0.6);
-  border-radius: 10px; 
+  border-radius: 10px;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.3s ease;
@@ -692,7 +645,7 @@ watch(() => props.project, (newProject) => {
 }
 
 .modal-img-wrapper:hover .modal-hover-title {
-  opacity: 1; 
+  opacity: 1;
   pointer-events: auto;
 }
 
@@ -766,8 +719,8 @@ watch(() => props.project, (newProject) => {
 }
 
 .like-block {
-  display: flex; 
-  align-items: center; 
+  display: flex;
+  align-items: center;
   gap: 8px;
   padding: 6px 12px;
   background: #f8f9fa;
@@ -779,13 +732,13 @@ watch(() => props.project, (newProject) => {
 .like-block:hover {
   background: #e9ecef;
   transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .like-btn {
-  background: none; 
-  border: none; 
-  cursor: pointer; 
+  background: none;
+  border: none;
+  cursor: pointer;
   padding: 4px;
   border-radius: 50%;
   transition: all 0.2s ease;
@@ -799,9 +752,9 @@ watch(() => props.project, (newProject) => {
   transform: scale(1.1);
 }
 
-.like-count { 
-  font-size: 14px; 
-  color: #495057; 
+.like-count {
+  font-size: 14px;
+  color: #495057;
   font-weight: 500;
 }
 
@@ -882,7 +835,7 @@ watch(() => props.project, (newProject) => {
 
 .comment-header {
   display: flex;
-  align-items: center;
+  align-items: left;
   gap: 10px;
   margin-bottom: 8px;
 }
@@ -906,6 +859,8 @@ watch(() => props.project, (newProject) => {
 }
 
 .comment-content {
+  display: flex;
+  align-items: left;
   margin-bottom: 10px;
   line-height: 1.4;
   color: #444;
@@ -916,7 +871,8 @@ watch(() => props.project, (newProject) => {
   gap: 10px;
 }
 
-.reply-btn, .delete-btn {
+.reply-btn,
+.delete-btn {
   background: none;
   border: none;
   color: #007bff;
@@ -996,12 +952,17 @@ watch(() => props.project, (newProject) => {
 }
 
 .reply-to {
+  display: flex;
+  align-items: left;
   font-size: 11px;
   color: #6c757d;
   font-style: italic;
+  margin-bottom: 10px;
 }
 
 .reply-delete-btn {
+  display: flex;
+  align-items: left;
   margin-top: 5px;
   font-size: 11px;
 }
@@ -1024,7 +985,12 @@ watch(() => props.project, (newProject) => {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 </style>

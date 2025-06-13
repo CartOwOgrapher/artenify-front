@@ -75,7 +75,7 @@ const goToMyProfile = (userId) => {
           <button class="icon-btn" @click="$router.push('/messages')" aria-label="Сообщения">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#630D46" viewBox="0 0 24 24">
               <path
-                d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-2h-2v2zM0 6c0-1.1.9-2 2-2h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H2c-1.1 0-2-.9-2-2V6zm10 7l10-5V6L10 11z" />
+                d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" />
             </svg>
           </button>
           <button class="icon-btn" @click="$router.push('/notifications')" aria-label="Уведомления">
