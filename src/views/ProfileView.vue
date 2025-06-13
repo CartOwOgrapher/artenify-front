@@ -51,6 +51,7 @@ const fileInput = ref(null)
 
 // Avatar upload state (новое)
 const avatarImage = ref(null)
+const avatarImageStore = ref(null)
 const avatarFileInput = ref(null)
 const uploadingBanner = ref(false)
 const uploadingAvatar = ref(false)
@@ -157,6 +158,7 @@ async function fetchProfile(userId) {
     }
     if (res.data.avatar) {
       avatarImage.value = `${api.defaults.imageURL}/${res.data.avatar}`
+      avatarImageStore.value = res.data.avatar
     }
 
     // Загрузка статуса подписки для чужого профиля
@@ -383,15 +385,14 @@ async function uploadAvatar(file) {
         'Content-Type': 'multipart/form-data',
       }
     })
-
-    console.log('Аватар успешно загружен:', response.data)
     // Обновляем профиль после успешной загрузки
-    await fetchProfile(route.params.userId || currentUserId)
+   await fetchProfile(route.params.userId || currentUserId)
+    
   } catch (error) {
     console.error('Ошибка при загрузке аватара:', error)
     alert('Ошибка при загрузке аватара')
   } finally {
-    currentUser.avatar = avatarImage
+    currentUser.avatar = avatarImageStore.value
     store.commit('setUser', currentUser)
     uploadingAvatar.value = false
   }

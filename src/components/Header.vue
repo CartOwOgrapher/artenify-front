@@ -13,7 +13,6 @@ onMounted(async () => {
   if (!store.getters.isAuthenticated) return;
 
   await store.dispatch('getUser');
-  console.log('user from store:', store.state.user);
   const userData = computed(() => store.getters.user)
 });
 
