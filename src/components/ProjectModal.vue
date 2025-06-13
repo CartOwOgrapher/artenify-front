@@ -51,8 +51,30 @@
           Создано: {{ formatDate(project.created_at) }}
         </p>
 
-        <!-- Блок лайков (перемещен в правый угол перед комментариями) -->
+        <!-- Блок действий (лайки и голосование экспертов) -->
         <div class="content-actions">
+          <!-- Кнопка голосования (только для экспертов) -->
+          <div v-if="isExpert" class="vote-block">
+            <button 
+              class="vote-btn" 
+              @click="voteForPost"
+              :disabled="hasVoted || votingInProgress"
+              :title="hasVoted ? 'Вы уже проголосовали на этой неделе' : 'Проголосовать за лучший пост недели'"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path 
+                  d="M9 21.5L17.5 13L13 10L15 2.5L6.5 11L11 14L9 21.5Z" 
+                  :fill="hasVoted ? '#4CAF50' : 'none'"
+                  :stroke="hasVoted ? '#4CAF50' : '#666'"
+                  stroke-width="2"
+                />
+              </svg>
+              <span v-if="!hasVoted">Проголосовать</span>
+              <span v-else>Голос учтен</span>
+            </button>
+          </div>
+          
+          <!-- Блок лайков -->
           <div class="like-block">
             <button class="like-btn" @click="toggleLike">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -183,7 +205,7 @@
 </template>
 
 <script setup>
-import { ref, watch, computed, inject } from 'vue'
+import { ref, watch, computed, inject, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useStore } from 'vuex'
 import flowerImg from '@/assets/flower.png'
@@ -218,8 +240,42 @@ const replyText = ref('')
 const replyingTo = ref(null)
 const loadingComments = ref(false)
 
-// Кеш пользователей для комментариев
-const usersCache = ref({})
+// Состояния для голосования экспертов
+const isExpert = ref(false)
+const hasVoted = ref(false)
+const votingInProgress = ref(false)
+
+// Проверяем статус эксперта
+async function checkExpertStatus() {
+  if (!currentUser.value) return
+  
+  try {
+    const response = await api.get('/expert/status')
+    isExpert.value = response.data.is_expert
+    hasVoted.value = response.data.has_voted
+  } catch (error) {
+    console.error('Error checking expert status:', error)
+  }
+}
+
+// Голосование за пост
+async function voteForPost() {
+  if (!props.project?.id || hasVoted.value || !isExpert.value) return
+  
+  votingInProgress.value = true
+  try {
+    await api.post('/vote', {
+      post_id: props.project.id
+    })
+    hasVoted.value = true
+    // Можно добавить уведомление об успехе
+  } catch (error) {
+    console.error('Error voting:', error)
+    // Можно добавить обработку ошибки
+  } finally {
+    votingInProgress.value = false
+  }
+}
 
 // Утилита для получения количества лайков
 async function fetchLikeCount(postId) {
@@ -491,6 +547,11 @@ function formatDate(dateString) {
   }
 }
 
+// При монтировании проверяем статус эксперта
+onMounted(async () => {
+  await checkExpertStatus()
+})
+
 // Загружаем данные при открытии модалки
 watch(() => props.project, (newProject) => {
   if (newProject) {
@@ -663,13 +724,45 @@ watch(() => props.project, (newProject) => {
   text-decoration: underline;
 }
 
-/* Блок действий с контентом (лайки) - как в соцсетях */
+/* Блок действий с контентом (лайки и голосование) */
 .content-actions {
   display: flex;
   justify-content: flex-end;
   margin-bottom: 20px;
   padding: 10px 0;
   border-bottom: 1px solid #eee;
+}
+
+.vote-block {
+  margin-right: 15px;
+  display: flex;
+  align-items: center;
+}
+
+.vote-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 12px;
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 14px;
+}
+
+.vote-btn:hover:not(:disabled) {
+  background-color: #e0e0e0;
+}
+
+.vote-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.vote-btn svg {
+  flex-shrink: 0;
 }
 
 .like-block {

@@ -183,13 +183,13 @@ header {
 .bg-left { left: 0; }
 .bg-right { right: 0; }
 
-@media (max-width: 1200px) {
+@media (max-width: 1300px) {
   .bg-left,
   .bg-right {
     display: none;
   }
 }
-@media (max-width: 1200px) and (min-width: 901px) {
+@media (max-width: 1300px) and (min-width: 901px) {
   .bg-left,
   .bg-right {
     width: 15vw;
@@ -255,7 +255,7 @@ header {
 .placeholder-4 { left: 614px; top: 522px; }
 
 /* === MOBILE ONLY: ПЕРЕСТАВКА ПОРЯДКА И СКРЫТИЕ ПЛЕЙСХОЛДЕРОВ === */
-@media (max-width: 1200px) {
+@media (max-width: 1300px) {
   main > div {
     display: flex;
     flex-direction: column;

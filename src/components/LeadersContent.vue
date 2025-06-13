@@ -46,12 +46,26 @@
       <!-- Правая колонка: Выбор экспертов -->
       <div class="card card-expert">
         <h2>Выбор экспертов</h2>
-        <ol>
-          <li>7 -</li>
-          <li>8 -</li>
-          <li>9 -</li>
-          <li>10 -</li>
-          <li v-for="i in 6" :key="i">---</li>
+        <div v-if="loadingExperts" class="loading">Loading experts choices...</div>
+        <ol v-else>
+          <li
+            v-for="(post, index) in expertPosts"
+            :key="post.id"
+            class="flex items-center gap-2 p-1 cursor-pointer hover:bg-gray-100"
+            @click="goToOwnerProfile(post.user_id)"
+          >
+            <span class="rank">{{ index + 1 }} -</span>
+            <img
+              v-if="post.user_avatar"
+              :src="post.user_avatar.startsWith('http') ? post.user_avatar : `${api.defaults.imageURL}/${post.user_avatar}`"
+              class="avatar w-6 h-6 rounded-full object-cover"
+            />
+            <div v-else class="owner-avatar w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center">
+              <span class="text-xs text-gray-600">No photo</span>
+            </div>
+            <span class="text-sm">{{ post.user_name || post.user_email }}</span>
+          </li>
+          <li v-if="expertPosts.length === 0" class="text-sm text-gray-500">Эксперты еще не сделали выбор</li>
         </ol>
       </div>
     </div>
@@ -63,11 +77,13 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/axios.js'
 
+const router = useRouter()
 const users = ref([])
+const expertPosts = ref([])
 const perPage = 14
 const currentPage = ref(1)
 const loading = ref(true)
-const router = useRouter()
+const loadingExperts = ref(true)
 
 const totalPages = computed(() => Math.ceil(users.value.length / perPage))
 const paginated = computed(() => {
@@ -81,8 +97,8 @@ function prevPage() {
 function nextPage() {
   if (currentPage.value < totalPages.value) currentPage.value++
 }
-function goToOwnerProfile(id) {
-  router.push({ name: 'Profile', params: { userId: id } })
+function goToOwnerProfile(userId) {
+  router.push({ name: 'Profile', params: { userId } })
 }
 
 function getRank(index) {
@@ -94,18 +110,15 @@ async function fetchTopUsers() {
   try {
     loading.value = true
     
-    // First get all posts to collect user IDs
     const postsResponse = await api.get('posts', {
       params: {
         page: 1,
-        per_page: 100 // Adjust based on how many users you want to consider
+        per_page: 100
       }
     })
     
-    // Extract unique user IDs from posts
     const userIds = [...new Set(postsResponse.data.data.map(post => post.user_id))]
     
-    // Then fetch each user's profile with views count
     const userPromises = userIds.map(userId => 
       api.get(`profile/user/${userId}`)
         .then(response => {
@@ -126,11 +139,10 @@ async function fetchTopUsers() {
     
     const userResponses = await Promise.all(userPromises)
     
-    // Filter out null responses and sort by views
     users.value = userResponses
       .filter(user => user !== null)
       .sort((a, b) => b.views - a.views)
-      .slice(0, 100) // Limit to top 100 users
+      .slice(0, 100)
     
   } catch (error) {
     console.error('Error fetching top users:', error)
@@ -140,8 +152,57 @@ async function fetchTopUsers() {
   }
 }
 
+async function fetchExpertVotes() {
+  try {
+    loadingExperts.value = true
+    expertPosts.value = []
+
+    const votesResponse = await api.get('/honored-posts')
+    const votes = votesResponse.data
+
+    const postPromises = votes.map(async vote => {
+      try {
+        const postResponse = await api.get(`posts/${vote.post_id}`)
+        const post = postResponse.data.data
+        
+        const userResponse = await api.get(`profile/user/${post.user_id}`)
+        const user = userResponse.data
+        
+        return {
+          id: post.id,
+          user_id: post.user_id,
+          user_name: user.name,
+          user_email: user.email,
+          user_avatar: user.avatar
+        }
+      } catch (error) {
+        console.error(`Error processing post ${vote.post_id}:`, error)
+        return null
+      }
+    })
+
+    const posts = await Promise.all(postPromises)
+    
+    expertPosts.value = posts
+      .filter(post => post !== null)
+      .reduce((unique, post) => {
+        if (!unique.some(p => p.user_id === post.user_id)) {
+          unique.push(post)
+        }
+        return unique
+      }, [])
+      .slice(0, 10)
+
+  } catch (error) {
+    console.error('Error fetching expert votes:', error)
+  } finally {
+    loadingExperts.value = false
+  }
+}
+
 onMounted(() => {
   fetchTopUsers()
+  fetchExpertVotes()
 })
 </script>
 

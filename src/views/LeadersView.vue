@@ -45,19 +45,40 @@ import LeadersContent from '@/components/LeadersContent.vue'
 </template>
 
 <style scoped>
-/* Фон */
+/* Глобальные переменные и хедер */
+:root {
+  --header-offset: 60px;
+}
+
+header {
+  position: relative;
+  z-index: 20;
+}
+
+/* Фоновые картинки */
 .bg-left,
 .bg-right {
   position: absolute;
   top: 0;
-  height: auto;
-  max-height: 100vh;
-  width: auto;
+  height: 100vh;
+  width: 40vw;
   z-index: 10;
 }
 .bg-left { left: 0; }
 .bg-right { right: 0; }
 
+@media (max-width: 1200px) {
+  .bg-left,
+  .bg-right {
+    display: none;
+  }
+}
+@media (max-width: 1200px) and (min-width: 901px) {
+  .bg-left,
+  .bg-right {
+    width: 15vw;
+  }
+}
 /* Логотип */
 .logo-container {
   position: absolute;
@@ -66,6 +87,23 @@ import LeadersContent from '@/components/LeadersContent.vue'
   transform: translateX(-50%);
   z-index: 9;
   width: 170px;
+}
+@media (max-width: 1200px) {
+  main > div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    row-gap: 20px;
+    margin-top: var(--header-offset);
+  }
+
+  /* Логотип первым */
+  .logo-container {
+    order: -3;
+    position: relative !important;
+    top: 0; left: 0; transform: none !important;
+    margin: 0 auto;
+  }
 }
 
 /* Обертка плейсхолдеров */
