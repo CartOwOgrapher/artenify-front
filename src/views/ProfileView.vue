@@ -18,7 +18,7 @@ const router = useRouter()
 const store = useStore()
 
 // Reactive state
-const projects = ref([])
+const userProjects = ref([])
 const likedProjects = ref([])
 const favoritedProjects = ref([])
 const draftProjects = ref([])
@@ -36,6 +36,7 @@ const isModalOpen = ref(false)
 
 const loadingProfile = ref(false)
 const loadingProjects = ref(false)
+const loadingFavorited = ref(false)
 const loadingLiked = ref(false)
 const loadingDraft = ref(false)
 
@@ -190,10 +191,11 @@ async function fetchUserProjects(userId) {
     const res = await api.get(`/users/${userId}/posts`, { params: { page: 1 } })
     let list = res.data.data || []
     // enrich with likes
-    projects.value = await Promise.all(list.map(async p => ({ ...p, likeCount: await fetchLikeCount(p.id) })))
+    userProjects.value = await Promise.all(list.map(async p => ({ ...p, likeCount: await fetchLikeCount(p.id) })))
   } catch (err) {
     console.error(err)
   } finally {
+    console.log(userProjects.value)
     loadingProjects.value = false
   }
 }
@@ -229,6 +231,7 @@ async function fetchLikedProjects(userId) {
 }
 
 async function fetchFavoritedProjects(userId) {
+  loadingFavorited.value = true
   try {
     const response = await api.get(`/favorites/${userId}`, {
       params: { model: 'post' },
@@ -255,6 +258,8 @@ async function fetchFavoritedProjects(userId) {
   } catch (err) {
     console.error('Ошибка при загрузке избранного', err);
     favoritedProjects.value = [];
+  } finally {
+    loadingFavorited.value = false
   }
 }
 
@@ -539,10 +544,10 @@ watch(() => route.params.userId, async (newUserId) => {
     if (newUserId == currentUserId) {
       await fetchUserDraftProject();
     }
+    await fetchProfile(newUserId),
     await Promise.all([
-      fetchFavoritedProjects(newUserId),
-      fetchProfile(newUserId),
       fetchUserProjects(newUserId),
+      fetchFavoritedProjects(newUserId),
       fetchLikedProjects(newUserId),
       fetchComments(newUserId)
     ]);
@@ -567,8 +572,10 @@ onMounted(async () => {
   await fetchProfile(userId)
   await Promise.all([
     fetchUserProjects(userId),
+    fetchFavoritedProjects(userId),
     fetchLikedProjects(userId),
-    fetchFavoritedProjects(userId)])
+    fetchComments(userId),
+  ])
 })
 
 const tabs = computed(() => {
@@ -656,36 +663,41 @@ function formatDate(dateString) {
     <!-- Projects -->
     <div v-if="activeTab === 'Проекты'" class="projects">
       <h3>Проекты</h3>
-      <div v-if="loadingProjects" class="spinner" />
-        <div v-else class="project-grid">
-          <div v-for="p in projects" :key="p.id" class="placeholder" @click="openModal(p)">
+      <div v-if="loadingProjects" class="spinner"/>
+      <div v-else>
+        <div v-if="userProjects.length" class="project-grid">
+          <div v-for="p in userProjects" :key="p.id" class="placeholder" @click="openModal(p)">
             <img v-if="p.images?.length" :src="`${api.defaults.imageURL}/${p.images[0].path}`" :alt="p.title"
               class="placeholder-img" />
             <div v-else class="placeholder-img">Нет изображения</div>
             <div class="card-like-block">Лайки: {{ p.likeCount }}</div>
           </div>
         </div>
-      <div v-else class="tab-content">Пока нет проектов</div>
+        <div v-else class="tab-content">Пока нет проектов</div>
+      </div>
     </div>
 
     <!-- Favorites -->
     <div v-if="activeTab === 'Избранное'" class="projects">
       <h3>Избранное</h3>
-      <div v-if="favoritedProjects.length" class="project-grid">
-        <div v-for="p in favoritedProjects" :key="p.id" class="placeholder" @click="openModal(p)">
-          <img v-if="p.images?.length" :src="`${api.defaults.imageURL}/${p.images[0].path}`" :alt="p.title"
-            class="placeholder-img" />
-          <div v-else class="placeholder-img">Нет изображения</div>
-          <div class="card-like-block">Лайки: {{ p.likeCount }}</div>
+      <div v-if="loadingFavorited" class="spinner"/>
+      <div v-else>
+        <div v-if="favoritedProjects.length" class="project-grid">
+          <div v-for="p in favoritedProjects" :key="p.id" class="placeholder" @click="openModal(p)">
+            <img v-if="p.images?.length" :src="`${api.defaults.imageURL}/${p.images[0].path}`" :alt="p.title"
+              class="placeholder-img" />
+            <div v-else class="placeholder-img">Нет изображения</div>
+            <div class="card-like-block">Лайки: {{ p.likeCount }}</div>
+          </div>
         </div>
+        <div v-else class="tab-content">Пока нет избранного</div>
       </div>
-      <div v-else class="tab-content">Пока нет избранного</div>
     </div>
 
     <!-- Liked -->
     <div v-if="activeTab === 'Понравившееся'" class="projects">
       <h3>Понравившиеся проекты</h3>
-      <div v-if="loadingLiked" class="spinner" />
+      <div v-if="loadingLiked" class="spinner"/>
       <div v-else>
         <div v-if="likedProjects.length" class="project-grid">
           <div v-for="p in likedProjects" :key="p.id" class="placeholder" @click="openModal(p)">
