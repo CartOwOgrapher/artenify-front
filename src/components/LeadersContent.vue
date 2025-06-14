@@ -162,21 +162,19 @@ async function fetchExpertVotes() {
 
     const postPromises = votes.map(async vote => {
       try {
-        const postResponse = await api.get(`posts/${vote.post_id}`)
-        const post = postResponse.data.data
-        
-        const userResponse = await api.get(`profile/user/${post.user_id}`)
+      
+        const userResponse = await api.get(`profile/user/${vote.user_id}`)
         const user = userResponse.data
         
         return {
-          id: post.id,
-          user_id: post.user_id,
+          id: vote.id,
+          user_id: user.id,
           user_name: user.name,
           user_email: user.email,
           user_avatar: user.avatar
         }
       } catch (error) {
-        console.error(`Error processing post ${vote.post_id}:`, error)
+        console.error(`Error processing post ${vote.id}:`, error)
         return null
       }
     })
