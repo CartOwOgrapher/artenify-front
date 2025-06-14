@@ -1,162 +1,3 @@
-<template>
-  <div v-if="isVisible" class="modal-overlay" @click.self="$emit('close')">
-    <div class="modal-content">
-      <div v-if="project" class="modal-body">
-        <!-- Изображение с блоком избранного -->
-        <div class="modal-img-wrapper">
-          <img :src="project.images ? `${api.defaults.imageURL}/${project.images[0].path}` : flowerImg"
-            :alt="project.title" class="modal-img" />
-          <div class="modal-hover-title">{{ project.title }}</div>
-
-          <!-- Кнопка избранного (закладка в левом верхнем углу) -->
-          <div class="favorite-block">
-            <button class="favorite-btn" @click="toggleFavorite"
-              :title="userFavorited ? 'Удалить из избранного' : 'Добавить в избранное'">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M5 2C3.9 2 3 2.9 3 4V22L12 18L21 22V4C21 2.9 20.1 2 19 2H5Z"
-                  :fill="userFavorited ? '#ffd700' : 'none'" :stroke="userFavorited ? '#ffd700' : '#ffffff'"
-                  stroke-width="2" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <!-- Заголовок -->
-        <h2 class="modal-title">{{ project.title }}</h2>
-
-        <!-- Описание -->
-        <p class="modal-description">{{ project.description }}</p>
-
-        <!-- Информация о владельце -->
-        <div v-if="ownerPost" class="owner-block" @click="goToOwnerProfile(ownerPost.id)">
-          <img :src="ownerPost.avatar ? `${api.defaults.imageURL}/${ownerPost.avatar}` : flowerImg" :alt="ownerPost.name"
-            class="owner-avatar" />
-          <span class="owner-name">{{ ownerPost.name }}</span>
-        </div>
-
-        <!-- Дата создания -->
-        <p v-if="project.created_at" class="modal-date">
-          Создано: {{ formatDate(project.created_at) }}
-        </p>
-
-        <!-- Блок действий (лайки и голосование экспертов) -->
-        <div class="content-actions">
-          <!-- Кнопка голосования (только для экспертов) -->
-          <div v-if="isExpert" class="vote-block">
-            <button class="vote-btn" @click="voteForPost" :disabled="hasVoted || votingInProgress"
-              :title="hasVoted ? 'Вы уже проголосовали на этой неделе' : 'Проголосовать за лучший пост недели'">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M9 21.5L17.5 13L13 10L15 2.5L6.5 11L11 14L9 21.5Z" :fill="hasVoted ? '#4CAF50' : 'none'"
-                  :stroke="hasVoted ? '#4CAF50' : '#666'" stroke-width="2" />
-              </svg>
-              <span v-if="!hasVoted">Проголосовать</span>
-              <span v-else>Голос учтен</span>
-            </button>
-          </div>
-
-          <!-- Блок лайков -->
-          <div class="like-block">
-            <button class="like-btn" @click="toggleLike">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
-                  :fill="userLiked ? '#ff3040' : 'none'" :stroke="userLiked ? '#ff3040' : '#666'" stroke-width="2" />
-              </svg>
-            </button>
-            <span class="like-count">{{ likeCount }}</span>
-          </div>
-        </div>
-
-        <!-- Секция комментариев -->
-        <div class="modal-comments-section">
-          <h4>Комментарии</h4>
-
-          <!-- Форма добавления комментария -->
-          <div class="new-comment-form">
-            <textarea v-model="newCommentText" placeholder="Написать комментарий..." class="comment-textarea"></textarea>
-            <button @click="postComment" :disabled="!newCommentText.trim()" class="comment-submit-btn">
-              Отправить
-            </button>
-          </div>
-
-          <!-- Загрузка комментариев -->
-          <div v-if="loadingComments" class="comments-loading">
-            <div class="spinner"></div>
-            Загрузка комментариев...
-          </div>
-
-          <!-- Список комментариев -->
-          <div v-else class="comments-list">
-            <div v-if="!comments.length" class="no-comments">
-              Комментариев пока нет. Будьте первым!
-            </div>
-
-            <div v-for="comment in comments" :key="comment.id" class="comment"
-              :class="{ 'has-replies': comment.replies.length }">
-              <!-- Заголовок комментария -->
-              <div class="comment-header">
-                <img :src="comment.comment_owner.avatar" :alt="comment.comment_owner.name" class="comment-avatar" />
-                <span class="comment-author">{{ comment.comment_owner.name }}</span>
-                <span class="comment-date">{{ formatDate(comment.created_at) }}</span>
-              </div>
-
-              <!-- Содержимое комментария -->
-              <div class="comment-content">{{ comment.content }}</div>
-
-              <!-- Действия с комментарием -->
-              <div class="comment-actions">
-                <button v-if="!comment.deleted" @click="replyingTo = replyingTo === comment.id ? null : comment.id"
-                  class="reply-btn">
-                  Ответить
-                </button>
-                <button v-if="currentUser && currentUser.id === comment.comment_owner.id && !comment.deleted"
-                  @click="softDeleteComment(comment.id)" class="delete-btn">
-                  Удалить
-                </button>
-              </div>
-
-              <!-- Форма ответа -->
-              <div v-if="replyingTo === comment.id" class="reply-form">
-                <textarea v-model="replyText" :placeholder="`Ответить ${comment.comment_owner.name}...`"
-                  class="reply-textarea"></textarea>
-                <button @click="postReply(comment.id)" :disabled="!replyText.trim()" class="reply-submit-btn">
-                  Отправить ответ
-                </button>
-              </div>
-
-              <!-- Ответы на комментарий -->
-              <div v-if="comment.replies.length" class="replies">
-                <div v-for="reply in comment.replies" :key="reply.id" class="reply">
-                  <div class="comment-header">
-                    <img :src="reply.comment_owner.avatar" :alt="reply.comment_owner.name" class="comment-avatar" />
-                    <span class="comment-author">{{ reply.comment_owner.name }}</span>
-                    <span class="comment-date">{{ formatDate(reply.created_at) }}</span>
-                  </div>
-
-                  <div v-if="reply.reply_to" class="reply-to">
-                    в ответ {{ reply.reply_to }}
-                  </div>
-
-                  <div class="comment-content">{{ reply.content }}</div>
-
-                  <button v-if="currentUser && currentUser.id === reply.comment_owner.id && !reply.deleted"
-                    @click="softDeleteComment(reply.id)" class="delete-btn reply-delete-btn">Удалить
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Кнопка закрытия -->
-      <button class="modal-close" @click="$emit('close')">
-        Закрыть
-      </button>
-    </div>
-  </div>
-</template>
-
 <script setup>
 import { ref, watch, computed, inject, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
@@ -178,7 +19,7 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'likedUpdate' ,'favoritedUpdate'])
 
 // Состояния
 const ownerPost = ref(null)
@@ -263,6 +104,7 @@ async function toggleLike() {
       await api.post('likes/create', { likeble_type: 'post', likeble_id: postId })
     }
     await fetchLikes(postId)
+    emit('likedUpdate', currentUser.value.id);
   } catch (e) {
     console.error('Ошибка toggleLike', e)
   }
@@ -337,6 +179,7 @@ async function toggleFavorite() {
     }
 
     await fetchFavoriteStatus(currentUser.value.id)
+    emit('favoritedUpdate', currentUser.value.id);
   } catch (e) {
     console.error('Ошибка при изменении избранного:', e)
   }
@@ -526,6 +369,165 @@ watch(() => props.project, (newProject) => {
   }
 })
 </script>
+
+<template>
+  <div v-if="isVisible" class="modal-overlay" @click.self="$emit('close')">
+    <div class="modal-content">
+      <div v-if="project" class="modal-body">
+        <!-- Изображение с блоком избранного -->
+        <div class="modal-img-wrapper">
+          <img :src="project.images ? `${api.defaults.imageURL}/${project.images[0].path}` : flowerImg"
+            :alt="project.title" class="modal-img" />
+          <div class="modal-hover-title">{{ project.title }}</div>
+
+          <!-- Кнопка избранного (закладка в левом верхнем углу) -->
+          <div class="favorite-block">
+            <button class="favorite-btn" @click="toggleFavorite"
+              :title="userFavorited ? 'Удалить из избранного' : 'Добавить в избранное'">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M5 2C3.9 2 3 2.9 3 4V22L12 18L21 22V4C21 2.9 20.1 2 19 2H5Z"
+                  :fill="userFavorited ? '#ffd700' : 'none'" :stroke="userFavorited ? '#ffd700' : '#ffffff'"
+                  stroke-width="2" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Заголовок -->
+        <h2 class="modal-title">{{ project.title }}</h2>
+
+        <!-- Описание -->
+        <p class="modal-description">{{ project.description }}</p>
+
+        <!-- Информация о владельце -->
+        <div v-if="ownerPost" class="owner-block" @click="goToOwnerProfile(ownerPost.id)">
+          <img :src="ownerPost.avatar ? `${api.defaults.imageURL}/${ownerPost.avatar}` : flowerImg" :alt="ownerPost.name"
+            class="owner-avatar" />
+          <span class="owner-name">{{ ownerPost.name }}</span>
+        </div>
+
+        <!-- Дата создания -->
+        <p v-if="project.created_at" class="modal-date">
+          Создано: {{ formatDate(project.created_at) }}
+        </p>
+
+        <!-- Блок действий (лайки и голосование экспертов) -->
+        <div class="content-actions">
+          <!-- Кнопка голосования (только для экспертов) -->
+          <div v-if="isExpert" class="vote-block">
+            <button class="vote-btn" @click="voteForPost" :disabled="hasVoted || votingInProgress"
+              :title="hasVoted ? 'Вы уже проголосовали на этой неделе' : 'Проголосовать за лучший пост недели'">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 21.5L17.5 13L13 10L15 2.5L6.5 11L11 14L9 21.5Z" :fill="hasVoted ? '#4CAF50' : 'none'"
+                  :stroke="hasVoted ? '#4CAF50' : '#666'" stroke-width="2" />
+              </svg>
+              <span v-if="!hasVoted">Проголосовать</span>
+              <span v-else>Голос учтен</span>
+            </button>
+          </div>
+
+          <!-- Блок лайков -->
+          <div class="like-block">
+            <button class="like-btn" @click="toggleLike">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                  :fill="userLiked ? '#ff3040' : 'none'" :stroke="userLiked ? '#ff3040' : '#666'" stroke-width="2" />
+              </svg>
+            </button>
+            <span class="like-count">{{ likeCount }}</span>
+          </div>
+        </div>
+
+        <!-- Секция комментариев -->
+        <div class="modal-comments-section">
+          <h4>Комментарии</h4>
+
+          <!-- Форма добавления комментария -->
+          <div class="new-comment-form">
+            <textarea v-model="newCommentText" placeholder="Написать комментарий..." class="comment-textarea"></textarea>
+            <button @click="postComment" :disabled="!newCommentText.trim()" class="comment-submit-btn">
+              Отправить
+            </button>
+          </div>
+
+          <!-- Загрузка комментариев -->
+          <div v-if="loadingComments" class="comments-loading">
+            <div class="spinner"></div>
+            Загрузка комментариев...
+          </div>
+
+          <!-- Список комментариев -->
+          <div v-else class="comments-list">
+            <div v-if="!comments.length" class="no-comments">
+              Комментариев пока нет. Будьте первым!
+            </div>
+
+            <div v-for="comment in comments" :key="comment.id" class="comment"
+              :class="{ 'has-replies': comment.replies.length }">
+              <!-- Заголовок комментария -->
+              <div class="comment-header">
+                <img :src="comment.comment_owner.avatar" :alt="comment.comment_owner.name" class="comment-avatar" />
+                <span class="comment-author">{{ comment.comment_owner.name }}</span>
+                <span class="comment-date">{{ formatDate(comment.created_at) }}</span>
+              </div>
+
+              <!-- Содержимое комментария -->
+              <div class="comment-content">{{ comment.content }}</div>
+
+              <!-- Действия с комментарием -->
+              <div class="comment-actions">
+                <button v-if="!comment.deleted" @click="replyingTo = replyingTo === comment.id ? null : comment.id"
+                  class="reply-btn">
+                  Ответить
+                </button>
+                <button v-if="currentUser && currentUser.id === comment.comment_owner.id && !comment.deleted"
+                  @click="softDeleteComment(comment.id)" class="delete-btn">
+                  Удалить
+                </button>
+              </div>
+
+              <!-- Форма ответа -->
+              <div v-if="replyingTo === comment.id" class="reply-form">
+                <textarea v-model="replyText" :placeholder="`Ответить ${comment.comment_owner.name}...`"
+                  class="reply-textarea"></textarea>
+                <button @click="postReply(comment.id)" :disabled="!replyText.trim()" class="reply-submit-btn">
+                  Отправить ответ
+                </button>
+              </div>
+
+              <!-- Ответы на комментарий -->
+              <div v-if="comment.replies.length" class="replies">
+                <div v-for="reply in comment.replies" :key="reply.id" class="reply">
+                  <div class="comment-header">
+                    <img :src="reply.comment_owner.avatar" :alt="reply.comment_owner.name" class="comment-avatar" />
+                    <span class="comment-author">{{ reply.comment_owner.name }}</span>
+                    <span class="comment-date">{{ formatDate(reply.created_at) }}</span>
+                  </div>
+
+                  <div v-if="reply.reply_to" class="reply-to">
+                    в ответ {{ reply.reply_to }}
+                  </div>
+
+                  <div class="comment-content">{{ reply.content }}</div>
+
+                  <button v-if="currentUser && currentUser.id === reply.comment_owner.id && !reply.deleted"
+                    @click="softDeleteComment(reply.id)" class="delete-btn reply-delete-btn">Удалить
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Кнопка закрытия -->
+      <button class="modal-close" @click="$emit('close')">
+        Закрыть
+      </button>
+    </div>
+  </div>
+</template>
 
 <style scoped>
 .modal-overlay {

@@ -6,11 +6,11 @@ import api from '@/axios.js'
 import flowerImg from '@/assets/flower.png'
 import { format, parseISO } from 'date-fns'
 import { ru } from 'date-fns/locale'
+import ProjectModal from '@/components/ProjectModal.vue'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost/api/v1'
 
 import AnalyticsTab from '@/components/AnalyticsTab.vue'
-
 
 // Router & Store
 const route = useRoute()
@@ -32,14 +32,11 @@ const profileSubscriptionsCount = ref(0)
 const profileSubscribersCount = ref(0)
 
 const selectedProject = ref(null)
-const likeCount = ref(0)
-const userLiked = ref(false)
-const userFavorited = ref(false)
+const isModalOpen = ref(false)
 
 const loadingProfile = ref(false)
 const loadingProjects = ref(false)
 const loadingLiked = ref(false)
-const loadingModal = ref(false)
 const loadingDraft = ref(false)
 
 const activeTab = ref('Проекты')
@@ -49,7 +46,7 @@ const bannerImage = ref(null)
 const isDragOver = ref(false)
 const fileInput = ref(null)
 
-// Avatar upload state (новое)
+// Avatar upload state
 const avatarImage = ref(null)
 const avatarImageStore = ref(null)
 const avatarFileInput = ref(null)
@@ -173,7 +170,6 @@ async function fetchProfile(userId) {
     userName.value = 'Не удалось загрузить профиль'
   } finally {
     loadingProfile.value = false
-
   }
 }
 
@@ -215,10 +211,10 @@ async function fetchUserDraftProject() {
 }
 
 // 3) Fetch liked projects
-async function fetchLikedProjects() {
+async function fetchLikedProjects(userId) {
   loadingLiked.value = true
   try {
-    const res = await api.get('/likes', { params: { model: 'post', id: currentUserId }, headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
+    const res = await api.get('/likes', { params: { model: 'post', id: userId }, headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
     const likes = Array.isArray(res.data.like) ? res.data.like : []
     const ids = likes.map(l => l.likeble_id)
     if (!ids.length) { likedProjects.value = []; return }
@@ -232,7 +228,6 @@ async function fetchLikedProjects() {
   }
 }
 
-
 async function fetchFavoritedProjects(userId) {
   try {
     const response = await api.get(`/favorites/${userId}`, {
@@ -242,7 +237,7 @@ async function fetchFavoritedProjects(userId) {
 
     const favoritedPosts = Array.isArray(response.data.favorite) ? response.data.favorite : [];
 
-    const ids = favoritedPosts.map(f => f.favoriteble_id); // используем entity_id
+    const ids = favoritedPosts.map(f => f.favoriteble_id);
     if (!ids.length) {
       favoritedProjects.value = [];
       return;
@@ -263,141 +258,7 @@ async function fetchFavoritedProjects(userId) {
   }
 }
 
-// 6) Toggle like
-async function toggleLike() {
-  if (!selectedProject.value) return
-  const postId = selectedProject.value.id
-  try {
-    const headers = { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
-    if (userLiked.value) await api.delete('/likes/delete', { params: { model: 'post', id: postId }, headers })
-    else await api.post('/likes/create', { likeble_type: 'post', likeble_id: postId }, { headers })
-    await fetchProjectModalData(postId)
-  } catch (err) {
-    console.error(err)
-  }
-}
-
-// 7) Toggle favorite
-async function toggleFavorite() {
-  if (!selectedProject.value) return;
-  const postId = selectedProject.value.id;
-
-  try {
-    const headers = { Authorization: `Bearer ${localStorage.getItem('access_token')}` };
-    if (userFavorited.value) {
-      // Удалить из избранного
-      await api.delete('/favorites/delete', {
-        params: {
-          model: 'post',
-          id: postId
-        }
-      });
-      userFavorited.value = false;
-    } else {
-      // Добавить в избранное
-      await api.post('/favorites/create', {
-        favoriteble_type: 'post',
-        favoriteble_id: postId
-      });
-      userFavorited.value = true;
-    }
-
-    // Обновляем список "Избранное"
-    await fetchFavoritedProjects(selectedUserId.value);
-
-  } catch (err) {
-    console.error('Ошибка при изменении избранного:', err);
-    alert('Не удалось изменить статус избранного');
-  }
-}
-
-// Combined fetch for modal
-async function fetchProjectModalData(postId) {
-  loadingModal.value = true;
-  likeCount.value = await fetchLikeCount(postId);
-  try {
-    const res = await api.get('/likes', {
-      params: { model: 'post', id: postId },
-      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
-    });
-    const likes = Array.isArray(res.data.like) ? res.data.like : [];
-    userLiked.value = likes.some(item => item.likeble_id === postId);
-  } catch {
-    userLiked.value = false;
-  }
-
-  // Проверяем, есть ли пост в избранном
-  try {
-    const res = await api.get(`/favorites/${currentUserId}`, {
-      params: { model: 'post' },
-      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
-    });
-    const favorited = res.data.favorite || [];
-    userFavorited.value = favorited.some(fav => fav.favoriteble_id == postId);
-  } catch {
-    userFavorited.value = false;
-  }
-  loadingModal.value = false;
-}
-
-// Modal open/close
-function openModal(p) { selectedProject.value = p; fetchProjectModalData(p.id) }
-function closeModal() { selectedProject.value = null }
-
-// === НОВЫЕ ФУНКЦИИ ДЛЯ ЗАГРУЗКИ ИЗОБРАЖЕНИЙ ===
-
-// Загрузка баннера
-async function uploadBanner(file) {
-  uploadingBanner.value = true
-  try {
-    const formData = new FormData()
-    formData.append('image', file)
-
-    const response = await api.post('/profile/banner', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-        Authorization: `Bearer ${localStorage.getItem('access_token')}`
-      }
-    })
-
-    console.log('Баннер успешно загружен:', response.data)
-    // Обновляем профиль после успешной загрузки
-    await fetchProfile(route.params.userId || currentUserId)
-  } catch (error) {
-    console.error('Ошибка при загрузке баннера:', error)
-    alert('Ошибка при загрузке баннера')
-  } finally {
-    uploadingBanner.value = false
-    currentUser.banner = bannerImage
-    store.commit('setUser', currentUser)
-  }
-}
-
-// Загрузка аватарки
-async function uploadAvatar(file) {
-  uploadingAvatar.value = true
-  try {
-    const formData = new FormData()
-    formData.append('image', file)
-
-    const response = await api.post('/profile/avatar', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      }
-    })
-    // Обновляем профиль после успешной загрузки
-   await fetchProfile(route.params.userId || currentUserId)
-    
-  } catch (error) {
-    console.error('Ошибка при загрузке аватара:', error)
-    alert('Ошибка при загрузке аватара')
-  } finally {
-    currentUser.avatar = avatarImageStore.value
-    store.commit('setUser', currentUser)
-    uploadingAvatar.value = false
-  }
-}
-const usersCache = ref({}); 
+const usersCache = ref({});
 
 async function getUserInfo(userId) {
   if (usersCache.value[userId]) {
@@ -530,6 +391,7 @@ async function postReply(commentId) {
     console.error('Ошибка отправки ответа', err)
   }
 }
+
 async function softDeleteComment(commentId) {
   try {
     await api.put(`comments/delete/soft/${commentId}`, null, {
@@ -543,6 +405,7 @@ async function softDeleteComment(commentId) {
     console.error('Ошибка при удалении комментария', err);
   }
 }
+
 // Обработчики для баннера
 function triggerFileInput() {
   if (isMyProfile.value) {
@@ -588,6 +451,33 @@ function onDrop(e) {
   }
 }
 
+// Загрузка баннера
+async function uploadBanner(file) {
+  uploadingBanner.value = true
+  try {
+    const formData = new FormData()
+    formData.append('image', file)
+
+    const response = await api.post('/profile/banner', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        Authorization: `Bearer ${localStorage.getItem('access_token')}`
+      }
+    })
+
+    console.log('Баннер успешно загружен:', response.data)
+    // Обновляем профиль после успешной загрузки
+    await fetchProfile(route.params.userId || currentUserId)
+  } catch (error) {
+    console.error('Ошибка при загрузке баннера:', error)
+    alert('Ошибка при загрузке баннера')
+  } finally {
+    uploadingBanner.value = false
+    currentUser.banner = bannerImage
+    store.commit('setUser', currentUser)
+  }
+}
+
 // Обработчики для аватара
 function triggerAvatarInput() {
   if (isMyProfile.value) {
@@ -605,6 +495,44 @@ function handleAvatarUpload(e) {
   }
 }
 
+// Загрузка аватарки
+async function uploadAvatar(file) {
+  uploadingAvatar.value = true
+  try {
+    const formData = new FormData()
+    formData.append('image', file)
+
+    const response = await api.post('/profile/avatar', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      }
+    })
+
+    console.log('Аватар успешно загружен:', response.data)
+    // Обновляем профиль после успешной загрузки
+    await fetchProfile(route.params.userId || currentUserId)
+  } catch (error) {
+    console.error('Ошибка при загрузке аватара:', error)
+    alert('Ошибка при загрузке аватара')
+  } finally {
+    currentUser.avatar = avatarImageStore.value
+    store.commit('setUser', currentUser)
+    uploadingAvatar.value = false
+  }
+}
+
+function openModal(project) {
+  selectedProject.value = project
+  isModalOpen.value = true
+}
+
+function closeModal() {
+  isModalOpen.value = false
+  selectedProject.value = null
+}
+
+function changeTab(tab) { activeTab.value = tab }
+
 watch(() => route.params.userId, async (newUserId) => {
   if (newUserId) {
     selectedUserId.value = newUserId;
@@ -615,16 +543,18 @@ watch(() => route.params.userId, async (newUserId) => {
       fetchFavoritedProjects(newUserId),
       fetchProfile(newUserId),
       fetchUserProjects(newUserId),
-      fetchLikedProjects(),
+      fetchLikedProjects(newUserId),
       fetchComments(newUserId)
     ]);
   }
 }, { immediate: true });
+
 watch(activeTab, async (newTab) => {
   if (newTab === 'Комментарии') {
     await fetchComments(selectedUserId.value)
   }
 })
+
 // Initial mount
 onMounted(async () => {
   let userId = route.params.userId || 'me'
@@ -637,14 +567,12 @@ onMounted(async () => {
   await fetchProfile(userId)
   await Promise.all([
     fetchUserProjects(userId),
-    fetchLikedProjects(),
+    fetchLikedProjects(userId),
     fetchFavoritedProjects(userId)])
 })
 
-function changeTab(tab) { activeTab.value = tab }
-
 const tabs = computed(() => {
-  const publicTabs = ['Проекты', 'Статистика', 'Избранное', 'Понравившееся', 'Комментарии']
+  const publicTabs = ['Проекты', 'Избранное', 'Понравившееся', 'Комментарии', 'Статистика']
   const privateTabs = ['Продвижение+', 'Черновики']
   return isMyProfile.value ? [...publicTabs, ...privateTabs] : publicTabs
 })
@@ -714,7 +642,6 @@ function formatDate(dateString) {
           </button>
         </div>
 
-
         <p class="reg-date">{{ formattedRegDate }}</p>
       </div>
     </div>
@@ -730,14 +657,15 @@ function formatDate(dateString) {
     <div v-if="activeTab === 'Проекты'" class="projects">
       <h3>Проекты</h3>
       <div v-if="loadingProjects" class="spinner" />
-      <div v-else class="project-grid">
-        <div v-for="p in projects" :key="p.id" class="placeholder" @click="openModal(p)">
-          <img v-if="p.images?.length" :src="`${api.defaults.imageURL}/${p.images[0].path}`" :alt="p.title"
-            class="placeholder-img" />
-          <div v-else class="placeholder-img">Нет изображения</div>
-          <div class="card-like-block">Лайки: {{ p.likeCount }}</div>
+        <div v-else class="project-grid">
+          <div v-for="p in projects" :key="p.id" class="placeholder" @click="openModal(p)">
+            <img v-if="p.images?.length" :src="`${api.defaults.imageURL}/${p.images[0].path}`" :alt="p.title"
+              class="placeholder-img" />
+            <div v-else class="placeholder-img">Нет изображения</div>
+            <div class="card-like-block">Лайки: {{ p.likeCount }}</div>
+          </div>
         </div>
-      </div>
+      <div v-else class="tab-content">Пока нет проектов</div>
     </div>
 
     <!-- Favorites -->
@@ -770,80 +698,68 @@ function formatDate(dateString) {
         <div v-else class="tab-content">Пока нет лайков</div>
       </div>
     </div>
+
     <!-- Комментарии -->
-<div v-if="activeTab === 'Комментарии'" class="comments-section">
-    <h3>Комментарии</h3>
+    <div v-if="activeTab === 'Комментарии'" class="comments-section">
+      <h3>Комментарии</h3>
 
-    <div v-if="currentUserId" class="new-comment-form">
-      <textarea v-model="newCommentText" placeholder="Оставьте комментарий..."></textarea>
-      <button @click="postComment" :disabled="!newCommentText.trim()">Отправить</button>
-    </div>
+      <div v-if="currentUserId" class="new-comment-form">
+        <textarea v-model="newCommentText" placeholder="Оставьте комментарий..."></textarea>
+        <button class="comment-btn" @click="postComment" :disabled="!newCommentText.trim()">Отправить</button>
+      </div>
 
-    <div v-if="loadingComments" class="spinner">Загрузка...</div>
-
-    <div v-else-if="comments.length" class="comments-list">
-      <div
-        v-for="comment in comments"
-        :key="comment.id"
-        class="comment"
-        :class="{ 'has-replies': comment.replies && comment.replies.length }"
-      >
-        <div class="comment-header">
-          <img :src="comment.comment_owner.avatar" class="comment-avatar" />
-          <div>
-            <div class="comment-author">{{ comment.comment_owner.name }}</div>
-            <div class="comment-date">{{ formatDate(comment.created_at) }}</div>
-          </div>
-        </div>
-        <div class="comment-content">{{ comment.content }}</div>
-
-        <button
-          v-if="currentUserId && comment.content !== 'Комментарий удалён'"
-          @click="replyingTo = replyingTo === comment.id ? null : comment.id"
-          class="reply-btn"
-        >
-          Ответить
-        </button>
-
-        <button
-          v-if="currentUserId === comment.comment_owner.id && comment.content !== 'Комментарий удалён'"
-          @click="softDeleteComment(comment.id)"
-          class="delete-btn"
-        >
-          Удалить
-        </button>
-
-        <div v-if="replyingTo === comment.id" class="reply-form">
-          <textarea v-model="replyText" placeholder="Ваш ответ..."></textarea>
-          <button @click="postReply(comment.id)" :disabled="!replyText.trim()">Отправить ответ</button>
-        </div>
-
-        <div v-if="comment.replies.length" class="replies">
-          <div v-for="reply in comment.replies" :key="reply.id" class="reply">
+      <div v-if="loadingComments" class="spinner">
+        <div v-if="comments.length" class="comments-list">
+          <div v-for="comment in comments" :key="comment.id" class="comment"
+            :class="{ 'has-replies': comment.replies && comment.replies.length }">
             <div class="comment-header">
-              <img :src="reply.comment_owner.avatar" class="comment-avatar" />
+              <img :src="comment.comment_owner.avatar" class="comment-avatar" />
               <div>
-                <div class="comment-author">{{ reply.comment_owner.name }}</div>
-                <div class="reply-to" v-if="reply.reply_to">в ответ пользователю {{ reply.reply_to }}</div>
-                <div class="comment-date">{{ formatDate(reply.created_at) }}</div>
+                <div class="comment-author">{{ comment.comment_owner.name }}</div>
+                <div class="comment-date">{{ formatDate(comment.created_at) }}</div>
               </div>
             </div>
-            <div class="comment-content">{{ reply.content }}</div>
+            <div class="comment-content">{{ comment.content }}</div>
 
-            <button
-              v-if="currentUserId === reply.comment_owner.id && reply.content !== 'Комментарий удалён'"
-              @click="softDeleteComment(reply.id)"
-              class="delete-btn"
-            >
+            <button v-if="currentUserId && comment.content !== 'Комментарий удалён'"
+              @click="replyingTo = replyingTo === comment.id ? null : comment.id" class="reply-btn">
+              Ответить
+            </button>
+
+            <button v-if="currentUserId === comment.comment_owner.id && comment.content !== 'Комментарий удалён'"
+              @click="softDeleteComment(comment.id)" class="delete-btn">
               Удалить
             </button>
+
+            <div v-if="replyingTo === comment.id" class="reply-form">
+              <textarea v-model="replyText" placeholder="Ваш ответ..."></textarea>
+              <button @click="postReply(comment.id)" :disabled="!replyText.trim()">Отправить ответ</button>
+            </div>
+
+            <div v-if="comment.replies.length" class="replies">
+              <div v-for="reply in comment.replies" :key="reply.id" class="reply">
+                <div class="comment-header">
+                  <img :src="reply.comment_owner.avatar" class="comment-avatar" />
+                  <div>
+                    <div class="comment-author">{{ reply.comment_owner.name }}</div>
+                    <div class="reply-to" v-if="reply.reply_to">в ответ пользователю {{ reply.reply_to }}</div>
+                    <div class="comment-date">{{ formatDate(reply.created_at) }}</div>
+                  </div>
+                </div>
+                <div class="comment-content">{{ reply.content }}</div>
+
+                <button v-if="currentUserId === reply.comment_owner.id && reply.content !== 'Комментарий удалён'"
+                  @click="softDeleteComment(reply.id)" class="delete-btn">
+                  Удалить
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <div v-else class="no-comments">Пока нет комментариев</div>
-  </div>
+      <div v-else class="no-comments">Пока нет комментариев</div>
+    </div>
 
     <!-- Others Tabs... -->
     <div v-if="activeTab === 'Продвижение+'" class="projects">
@@ -867,30 +783,13 @@ function formatDate(dateString) {
     </div>
 
     <!-- Modal -->
-    <div v-if="selectedProject" class="modal-overlay" @click.self="closeModal">
-      <div class="modal-content">
-        <button v-if="activeTab !== 'Черновики'" class="favorite-btn-top-left" @click="toggleFavorite">
-          <span v-if="userFavorited">⭐</span><span v-else>☆</span>
-        </button>
-
-        <img v-if="selectedProject.images?.length" :src="`${api.defaults.imageURL}/${selectedProject.images[0].path}`"
-          :alt="selectedProject.title" class="modal-img" />
-
-        <h2 class="modal-title">{{ selectedProject.title }}</h2>
-        <p class="modal-description">{{ selectedProject.description || 'Нет описания' }}</p>
-
-        <!-- Исправленный блок лайков (без дублирования) -->
-        <div v-if="activeTab !== 'Черновики'" class="like-block">
-          <button class="like-btn" @click="toggleLike">
-            <span v-if="userLiked">❤️</span>
-            <span v-else>🤍</span>
-          </button>
-          <span class="like-count">{{ likeCount }}</span>
-        </div>
-
-        <button class="modal-close" @click="closeModal">Закрыть</button>
-      </div>
-    </div>
+    <ProjectModal 
+    :isVisible="isModalOpen" 
+    :project="selectedProject" 
+    @close="closeModal" 
+    @likedUpdate="fetchLikedProjects"
+    @favoritedUpdate="fetchFavoritedProjects"
+    />
   </div>
 </template>
 
@@ -1114,33 +1013,6 @@ function formatDate(dateString) {
   flex-wrap: wrap;
 }
 
-.project-card {
-  width: 250px;
-  height: 250px;
-  position: relative;
-  overflow: hidden;
-  border-radius: 8px;
-  box-shadow: 0 0 6px rgba(0, 0, 0, 0.1);
-}
-
-.project-card img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.project-title {
-  position: absolute;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  color: white;
-  width: 100%;
-  padding: 8px;
-  font-weight: bold;
-  text-align: center;
-}
-
-/* --- Добавленные стили --- */
 .placeholder {
   width: 250px;
   height: 250px;
@@ -1166,141 +1038,6 @@ function formatDate(dateString) {
   color: #fff;
   padding: 4px 8px;
   font-size: 14px;
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  position: relative;
-  background: #fff;
-  padding: 30px;
-  border-radius: 12px;
-  max-width: 600px;
-  width: 90%;
-  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.2);
-  text-align: center;
-}
-
-.modal-img {
-  width: 100%;
-  max-height: 300px;
-  object-fit: cover;
-  margin-bottom: 20px;
-  border-radius: 8px;
-}
-
-.modal-title {
-  font-size: 24px;
-  margin-bottom: 10px;
-}
-
-.modal-description {
-  font-size: 16px;
-  color: #333;
-  white-space: pre-wrap;
-  text-align: left; /* вот это добавляем */
-  margin-bottom: 20px;
-}
-
-.like-block {
-  position: absolute;
-  bottom: 16px;
-  right: 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.like-btn {
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  padding: 0;
-}
-
-.subscribe-btn {
-  background: linear-gradient(135deg, #ff69b4, #f8a5c2); /* розовый градиент */
-  color: white;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
-  position: relative;
-  overflow: hidden;
-}
-
-/* Grain effect (внутри subscribe-btn) */
-.subscribe-btn::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-image: url('https://www.transparenttextures.com/patterns/asfalt-light.png'); /* зернистость */
-  opacity: 0.2;
-  pointer-events: none;
-}
-
-/* Более мягкий красный */
-.unsubscribe-btn {
-  background: #e24373; /* мягкий красный */
-  color: white;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-
-.buttons {
-  display: flex;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-.like-count {
-  font-size: 16px;
-  color: #333;
-}
-
-.modal-close {
-  margin-top: 40px;
-  padding: 10px 20px;
-  background: #333;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.favorite-btn-top-left {
-  position: absolute;
-  left: 8px;
-  top: 8px;
-  z-index: 1001;
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-}
-
-.favorite-btn-top-left:hover {
-  transform: scale(1.1);
 }
 
 .tab-content {
@@ -1332,6 +1069,30 @@ function formatDate(dateString) {
   border-radius: 8px;
   padding: 15px;
   margin-bottom: 15px;
+}
+
+.comment-btn {
+  background: linear-gradient(135deg, #ff69b4, #f8a5c2);
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  position: relative;
+  overflow: hidden;
+}
+
+.comment-btn:disabled {
+  background: linear-gradient(135deg, #d2d2d2, #b9b9b9);
+  color: black;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  position: relative;
+  overflow: hidden;
 }
 
 .comment.has-replies {
@@ -1403,5 +1164,39 @@ function formatDate(dateString) {
   text-align: center;
   color: #777;
   padding: 20px;
+}
+
+.subscribe-btn {
+  background: linear-gradient(135deg, #ff69b4, #f8a5c2);
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  position: relative;
+  overflow: hidden;
+}
+
+.subscribe-btn::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url('https://www.transparenttextures.com/patterns/asfalt-light.png');
+  opacity: 0.2;
+  pointer-events: none;
+}
+
+.unsubscribe-btn {
+  background: #e24373;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
 }
 </style>
